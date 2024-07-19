@@ -1,0 +1,43 @@
+{
+  "name": "soldecoder-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "format:check": "biome format . --diagnostic-level=error",
+    "format:fix": "biome format --write ./src/**/*.tsx",
+    "lint:check": "biome lint . --diagnostic-level=error",
+    "lint:fix": "biome lint --write .",
+    "check:all": "biome check . --diagnostic-level=error",
+    "typescript:check": "tsc --noEmit",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
+    "pm2:logs": "pm2 logs ecosystem.config.cjs",
+    "pm2:delete": "pm2 delete ecosystem.config.cjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.738.0",
+    "@aws-sdk/client-scheduler": "^3.806.0",
+    "@aws-sdk/lib-dynamodb": "^3.738.0",
+    "@discordjs/rest": "^1.2.0",
+    "@napi-rs/canvas": "^0.1.70",
+    "@solana/web3.js": "^1.98.2",
+    "axios": "^1.8.4",
+    "chalk": "^5.4.1",
+    "chokidar": "^4.0.3",
+    "cron": "^4.3.0",
+    "discord-api-types": "^0.37.16",
+    "discord.js": "^14.17.0",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.7.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.2.2"
+  }
+}
