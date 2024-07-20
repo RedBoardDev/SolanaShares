@@ -1,0 +1,60 @@
+{
+  "TableName": "discord-bot-config",
+  "BillingMode": "PAY_PER_REQUEST",
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "GSI_PK",
+      "AttributeType": "S"
+    },
+    {
+      "AttributeName": "GSI_SK",
+      "AttributeType": "S"
+    }
+  ],
+  "KeySchema": [
+    {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+    },
+    {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+    }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "ChannelIndex",
+      "KeySchema": [
+        {
+          "AttributeName": "GSI_PK",
+          "KeyType": "HASH"
+        },
+        {
+          "AttributeName": "GSI_SK",
+          "KeyType": "RANGE"
+        }
+      ],
+      "Projection": {
+        "ProjectionType": "ALL"
+      }
+    }
+  ],
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "SolanaShares-DiscordBot"
+    },
+    {
+      "Key": "Environment",
+      "Value": "production"
+    }
+  ]
+}
