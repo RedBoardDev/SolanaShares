@@ -1,0 +1,98 @@
+import { PositionStatus } from '@schemas/position-status.schema';
+import { logger } from '@helpers/logger';
+
+/**
+ * Parse a Discord position status message into a PositionStatus object.
+ * @param content Raw message string
+ * @returns Parsed PositionStatus or null if invalid
+ */
+export function parsePositionStatusMessage(content: string): PositionStatus | null {
+  try {
+    const firstLine = content.split('\n')[0].trim();
+    const cleanContent = firstLine
+      .replace(/^:[^:]*:\s*/, '')
+      .replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '')
+      .trim();
+
+    const basePattern = /^(.+?)\s*\(Symbol:\s*(.+?)\)\s*\|\s*PnL:\s*([-+]?\d+\.?\d*)\s*SOL\s*\(Return:\s*([-+]?\d+\.?\d*)%\)\s*\|\s*Start:\s*(\d+\.?\d*)\s*SOL\s*→\s*Current:\s*(\d+\.?\d*)\s*SOL\s*\|\s*Unclaimed Fees:\s*(\d+\.?\d*)\s*SOL/;
+
+    const baseMatch = cleanContent.match(basePattern);
+    if (!baseMatch) {
+      logger.debug('Position status message does not match base format', { content: cleanContent });
+      return null;
+    }
+
+    const [
+      ,
+      symbol,
+      symbolShort,
+      pnlStr,
+      pnlPercentageStr,
+      startPriceStr,
+      currentPriceStr,
+      unclaimedFeesStr,
+    ] = baseMatch;
+
+    const remainingContent = cleanContent.substring(baseMatch.index! + baseMatch[0].length);
+
+    const walletPattern = /.*?\|\s*Wallet:\s*(.+?)\s*\((.+?)\)$/;
+    const claimedFeesPattern = /\|\s*Claimed Fees:\s*(\d+\.?\d*)\s*SOL/;
+
+    const walletMatch = remainingContent.match(walletPattern);
+    if (!walletMatch) {
+      logger.debug('Could not extract wallet information', { remainingContent });
+      return null;
+    }
+
+    const walletName = walletMatch[1].trim();
+    const wallet = walletMatch[2].trim();
+
+    const claimedFeesMatch = remainingContent.match(claimedFeesPattern);
+    const claimedFees = claimedFeesMatch ? parseFloat(claimedFeesMatch[1]) : 0;
+
+    const pnl = parseFloat(pnlStr);
+    const pnlPercentage = parseFloat(pnlPercentageStr);
+    const startPrice = parseFloat(startPriceStr);
+    const currentPrice = parseFloat(currentPriceStr);
+    const unclaimedFees = parseFloat(unclaimedFeesStr);
+
+    let status: 'profit' | 'loss' | 'neutral';
+    if (pnlPercentage > 0) {
+      status = 'profit';
+    } else if (pnlPercentage < 0) {
+      status = 'loss';
+    } else {
+      status = 'neutral';
+    }
+
+    const positionStatus: PositionStatus = {
+      symbol: symbol.trim(),
+      symbolShort: symbolShort.trim(),
+      pnl,
+      pnlPercentage,
+      startPrice,
+      currentPrice,
+      unclaimedFees,
+      claimedFees,
+      wallet,
+      walletName,
+      status,
+    };
+
+    logger.debug('Successfully parsed position status', {
+      symbol: positionStatus.symbol,
+      symbolShort: positionStatus.symbolShort,
+      wallet: positionStatus.wallet,
+      pnl: positionStatus.pnl,
+      claimedFees: positionStatus.claimedFees,
+    });
+
+    return positionStatus;
+  } catch (error) {
+    logger.warn('Failed to parse position status message', {
+      error: error instanceof Error ? error.message : String(error),
+      content: content.substring(0, 150),
+    });
+    return null;
+  }
+}
