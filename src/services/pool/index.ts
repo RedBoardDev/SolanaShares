@@ -3,8 +3,6 @@ import * as operations from './operations';
 import * as reporting from './reporting';
 
 export class Pool {
-  private db = this.repo.getDB();
-
   constructor(private repo: DBRepository) {}
 
   deposit(user: string, amount: number): void {
@@ -24,10 +22,10 @@ export class Pool {
   }
 
   printSummary(): void {
-    reporting.printSummary(this.db);
+    reporting.printSummary(this.repo);
   }
 
   getUserStats(user: string) {
-    return reporting.getUserStats(this.db, user);
+    return reporting.getUserStats(this.repo, user);
   }
 }

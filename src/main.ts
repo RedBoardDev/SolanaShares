@@ -12,10 +12,10 @@ pool.deposit('Bob', 200);
 pool.printSummary();
 
 // 2️⃣ Trade #1 (20% gain)
-const before1 = repo.getDB().cash; // e.g. 300
-const added1 = before1 * 0.4; // 40% du wallet
+const before1 = repo.getCash();
+const added1 = before1 * 0.4;
 pool.openPosition(before1, added1);
-const after1 = before1 + added1 * 0.2; // +20% sur la position
+const after1 = before1 + added1 * 0.2;
 pool.closePosition(after1);
 pool.printSummary();
 
@@ -29,15 +29,15 @@ pool.deposit('Carol', 150);
 pool.printSummary();
 
 // 5️⃣ Trade #2 (–10% loss)
-const before2 = repo.getDB().cash;
+const before2 = repo.getCash();
 const added2 = before2 * 0.4;
 pool.openPosition(before2, added2);
-const after2 = before2 + added2 * -0.1; // –10% sur la position
+const after2 = before2 + added2 * -0.1;
 pool.closePosition(after2);
 pool.printSummary();
 
 // 6️⃣ Bob retire la moitié
-const bobHalf = repo.getDB().users.Bob.shares / 2;
+const bobHalf = repo.getUserShares('Bob') / 2;
 pool.withdraw('Bob', bobHalf);
 pool.printSummary();
 
@@ -46,20 +46,20 @@ pool.deposit('Dave', 300);
 pool.printSummary();
 
 // 8️⃣ Trade #3 (+5% gain)
-const before3 = repo.getDB().cash;
+const before3 = repo.getCash();
 const added3 = before3 * 0.4;
 pool.openPosition(before3, added3);
-const after3 = before3 + added3 * 0.05; // +5% sur la position
+const after3 = before3 + added3 * 0.05;
 pool.closePosition(after3);
 pool.printSummary();
 
 // 9️⃣ Alice retire 50 shares
-const aliceAvail = repo.getDB().users.Alice.shares;
+const aliceAvail = repo.getUserShares('Alice');
 pool.withdraw('Alice', Math.min(50, aliceAvail));
 pool.printSummary();
 
 // 🔟 Dave retire tout
-const daveAll = repo.getDB().users.Dave.shares;
+const daveAll = repo.getUserShares('Dave');
 pool.withdraw('Dave', daveAll);
 pool.printSummary();
 

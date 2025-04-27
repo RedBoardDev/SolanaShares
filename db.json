@@ -1,7 +1,114 @@
 {
-  "totalShares": 0,
-  "users": {},
-  "cash": 0,
+  "totalShares": 288.8888888888889,
+  "users": {
+    "Alice": {
+      "shares": 50,
+      "totalDeposited": 100,
+      "withdrawnTotal": 52.8768
+    },
+    "Bob": {
+      "shares": 100,
+      "totalDeposited": 200,
+      "withdrawnTotal": 103.67999999999999
+    },
+    "Carol": {
+      "shares": 138.88888888888889,
+      "totalDeposited": 150,
+      "withdrawnTotal": 0
+    },
+    "Dave": {
+      "shares": 0,
+      "totalDeposited": 300,
+      "withdrawnTotal": 306
+    }
+  },
+  "cash": 305.5104,
   "positionSize": 0,
-  "history": []
+  "history": [
+    {
+      "timestamp": "2025-04-27T17:16:49.624Z",
+      "type": "deposit",
+      "user": "Alice",
+      "amount": 100,
+      "shares": 100
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.625Z",
+      "type": "deposit",
+      "user": "Bob",
+      "amount": 200,
+      "shares": 200
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.625Z",
+      "type": "openPosition",
+      "beforeBalance": 300,
+      "addedLiquidity": 120
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.625Z",
+      "type": "closePosition",
+      "afterBalance": 324,
+      "pnl": 24
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.626Z",
+      "type": "deposit",
+      "user": "Carol",
+      "amount": 150,
+      "shares": 138.88888888888889
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.626Z",
+      "type": "openPosition",
+      "beforeBalance": 474,
+      "addedLiquidity": 189.60000000000002
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.626Z",
+      "type": "closePosition",
+      "afterBalance": 455.04,
+      "pnl": -18.95999999999998
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.626Z",
+      "type": "withdraw",
+      "user": "Bob",
+      "amount": 103.67999999999999,
+      "shares": 100
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.626Z",
+      "type": "deposit",
+      "user": "Dave",
+      "amount": 300,
+      "shares": 289.35185185185185
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.627Z",
+      "type": "openPosition",
+      "beforeBalance": 651.36,
+      "addedLiquidity": 260.54400000000004
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.627Z",
+      "type": "closePosition",
+      "afterBalance": 664.3872,
+      "pnl": 13.027199999999993
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.627Z",
+      "type": "withdraw",
+      "user": "Alice",
+      "amount": 52.8768,
+      "shares": 50
+    },
+    {
+      "timestamp": "2025-04-27T17:16:49.627Z",
+      "type": "withdraw",
+      "user": "Dave",
+      "amount": 306,
+      "shares": 289.35185185185185
+    }
+  ]
 }

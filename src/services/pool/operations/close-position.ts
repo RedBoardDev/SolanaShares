@@ -3,15 +3,18 @@ import { Logger } from '@utils/logger';
 import { recordEvent } from '../recorder';
 
 export function closePosition(repo: DBRepository, afterBalance: number): void {
-  const db = repo.getDB();
-  if (db.positionSize <= 0) {
+  const pos = repo.getPositionSize();
+  if (pos <= 0) {
     Logger.info('⚠️  [ClosePosition] pas de position ouverte');
     return;
   }
-  const beforeBalance = db.cash + db.positionSize;
+
+  const beforeBalance = repo.getCash() + pos;
   const pnl = afterBalance - beforeBalance;
-  db.cash = afterBalance;
-  db.positionSize = 0;
+
+  repo.updateCash(afterBalance);
+  repo.updatePositionSize(0);
+
   Logger.info(
     `🏁 [ClosePosition] wallet_before=$${beforeBalance.toFixed(6)}, wallet_after=$${afterBalance.toFixed(6)} → PnL=$${pnl.toFixed(6)}`,
   );
