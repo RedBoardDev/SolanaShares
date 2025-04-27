@@ -1,4 +1,4 @@
-import type { DBRepository } from '../../repositories/database-repository';
+import type { DBRepository } from '@repositories/database-repository';
 import * as operations from './operations';
 import * as reporting from './reporting';
 

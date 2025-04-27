@@ -1,5 +1,5 @@
-import type { DBRepository } from '../../../repositories/database-repository';
-import { Logger } from '../../../utils/logger';
+import type { DBRepository } from '@repositories/database-repository';
+import { Logger } from '@utils/logger';
 import { recordEvent } from '../recorder';
 
 export function closePosition(repo: DBRepository, afterBalance: number): void {

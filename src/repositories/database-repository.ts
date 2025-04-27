@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { DB } from '../domain/database';
+import type { DB } from '@domain/database';
 
 export class DBRepository {
   private data: DB;

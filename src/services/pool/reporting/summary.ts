@@ -1,6 +1,6 @@
-import type { DB } from '../../../domain/database';
+import type { DB } from '@domain/database';
 import { computeNAV } from '../nav';
-import { Logger } from '../../../utils/logger';
+import { Logger } from '@utils/logger';
 
 export function printSummary(db: DB): void {
   const { nav, poolAssets } = computeNAV(db);

@@ -1,4 +1,4 @@
-import type { DB } from '../../../domain/database';
+import type { DB } from '@domain/database';
 import { computeNAV } from '../nav';
 
 export interface UserStats {

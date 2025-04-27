@@ -1,4 +1,4 @@
-import type { DB } from '../../domain/database';
+import type { DB } from '@domain/database';
 
 export function computeNAV(db: DB): { nav: number; poolAssets: number } {
   const { cash, positionSize, totalShares } = db;

@@ -1,6 +1,6 @@
-import type { DBRepository } from '../../../repositories/database-repository';
+import type { DBRepository } from '@repositories/database-repository';
 import { computeNAV } from '../nav';
-import { Logger } from '../../../utils/logger';
+import { Logger } from '@utils/logger';
 import { recordEvent } from '../recorder';
 
 export function withdraw(repo: DBRepository, user: string, redeemShares: number): void {

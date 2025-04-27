@@ -1,7 +1,7 @@
-import type { DBRepository } from '../../../repositories/database-repository';
+import type { DBRepository } from '@repositories/database-repository';
 import { computeNAV } from '../nav';
 import { recordEvent } from '../recorder';
-import { Logger } from '../../../utils/logger';
+import { Logger } from '@utils/logger';
 
 export function deposit(repo: DBRepository, user: string, amount: number): void {
   const db = repo.getDB();
