@@ -9,6 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.87.6",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "sqlite3": "^5.1.6",

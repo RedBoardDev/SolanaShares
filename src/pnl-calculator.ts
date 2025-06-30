@@ -1,137 +1,169 @@
 import { db, Investment } from './database';
+import { SolanaTracker } from './solana-tracker';
 
 export interface UserPNL {
   userId: string;
   username: string;
-  totalInvested: number;
-  currentShare: number; // Pourcentage de parts dans le pool
-  shareValue: number;   // Valeur actuelle des parts
-  monthlyFees: number;  // Frais mensuels à payer
-  netPNL: number;       // PNL net après frais
-  pnlPercentage: number; // PNL en pourcentage
+  totalInvestedSOL: number;
+  totalInvestedUSD: number;
+  currentSharePercentage: number;
+  currentValueSOL: number;
+  currentValueUSD: number;
+  monthlyFeesUSD: number;
+  grossPNL_USD: number;
+  netPNL_USD: number;
+  pnlPercentage: number;
 }
 
 export class PNLCalculator {
   private monthlyPoolCost: number;
+  private solanaTracker: SolanaTracker;
 
-  constructor(monthlyPoolCost: number = 40) {
+  constructor(solanaTracker: SolanaTracker, monthlyPoolCost: number = 40) {
+    this.solanaTracker = solanaTracker;
     this.monthlyPoolCost = monthlyPoolCost;
   }
 
   /**
-   * Calcule les shares de chaque utilisateur à un moment donné
+   * Calcule les parts d'un utilisateur en tenant compte de l'historique
+   * Les parts évoluent à chaque nouveau dépôt dans le pool
    */
-  private calculateSharesAtTime(investments: Investment[], timestamp: number): Map<string, number> {
-    const userShares = new Map<string, number>();
-    let totalPool = 0;
-
-    // Filtrer les investissements jusqu'au timestamp donné
-    const relevantInvestments = investments.filter(inv => inv.timestamp <= timestamp);
+  private async calculateUserShareEvolution(userId: string, investments: Investment[]): Promise<{share: number, weightedMonths: number}> {
+    // Trier par timestamp
+    const sortedInvestments = [...investments].sort((a, b) => a.timestamp - b.timestamp);
     
-    // Calculer le total investi par chaque utilisateur
-    for (const investment of relevantInvestments) {
-      const current = userShares.get(investment.userId) || 0;
-      userShares.set(investment.userId, current + investment.amount);
-      totalPool += investment.amount;
-    }
-
-    // Convertir en pourcentages
-    const sharePercentages = new Map<string, number>();
-    for (const [userId, amount] of userShares) {
-      sharePercentages.set(userId, totalPool > 0 ? (amount / totalPool) : 0);
-    }
-
-    return sharePercentages;
-  }
-
-  /**
-   * Calcule les frais mensuels pour chaque utilisateur
-   */
-  private calculateMonthlyFees(userShare: number, totalMonths: number): number {
-    return userShare * this.monthlyPoolCost * totalMonths;
-  }
-
-  /**
-   * Calcule le nombre de mois depuis le premier investissement
-   */
-  private calculateMonthsSinceStart(investments: Investment[]): number {
-    if (investments.length === 0) return 0;
-
-    const firstInvestment = Math.min(...investments.map(inv => inv.timestamp));
+    let totalWeightedShare = 0;
+    let totalDuration = 0;
     const now = Date.now();
-    const monthsDiff = (now - firstInvestment) / (1000 * 60 * 60 * 24 * 30); // Approximation simple
+
+    // Pour chaque période entre les investissements
+    for (let i = 0; i < sortedInvestments.length; i++) {
+      const investmentTime = sortedInvestments[i].timestamp;
+      const nextTime = i < sortedInvestments.length - 1 ? sortedInvestments[i + 1].timestamp : now;
+      const duration = nextTime - investmentTime;
+
+      // Calculer les shares à ce moment
+      const shares = await this.solanaTracker.calculateHistoricalShares(investmentTime);
+      const userShare = shares.get(userId) || 0;
+
+      // Pondérer par la durée
+      totalWeightedShare += userShare * duration;
+      totalDuration += duration;
+    }
+
+    // Share moyenne pondérée
+    const averageShare = totalDuration > 0 ? totalWeightedShare / totalDuration : 0;
     
-    return Math.max(0, monthsDiff);
+    // Calculer le nombre de mois pondéré pour les frais
+    const monthsInMillis = 30 * 24 * 60 * 60 * 1000;
+    const weightedMonths = totalWeightedShare / monthsInMillis;
+
+    return { share: averageShare, weightedMonths };
   }
 
   /**
-   * Calcule le PNL pour un utilisateur spécifique
+   * Calcule le PNL pour un utilisateur
    */
-  async calculateUserPNL(userId: string, currentPoolValue: number): Promise<UserPNL | null> {
+  async calculateUserPNL(userId: string): Promise<UserPNL | null> {
     const userInvestments = await db.getUserInvestments(userId);
     if (userInvestments.length === 0) return null;
 
-    const allInvestments = await db.getAllInvestments();
-    const totalInvested = await db.getTotalInvested();
-    const userTotalInvested = await db.getTotalInvestedByUser(userId);
+    // Synchroniser les dépôts on-chain
+    await this.solanaTracker.syncDeposits();
 
-    // Calculer la part actuelle de l'utilisateur
-    const currentShares = this.calculateSharesAtTime(allInvestments, Date.now());
-    const userShare = currentShares.get(userId) || 0;
+    // Récupérer le solde actuel du hot wallet
+    const currentBalanceSOL = await this.solanaTracker.getHotWalletBalance();
+    const solPrice = await this.solanaTracker.getSolPrice();
+    const currentBalanceUSD = currentBalanceSOL * solPrice;
+
+    // Total investi par l'utilisateur
+    const userTotalSOL = userInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+    const userTotalUSD = userTotalSOL * solPrice; // Approximation au prix actuel
+
+    // Calculer les shares actuelles
+    const currentShares = await this.solanaTracker.calculateHistoricalShares(Date.now());
+    const currentShare = currentShares.get(userId) || 0;
 
     // Valeur actuelle des parts de l'utilisateur
-    const shareValue = currentPoolValue * userShare;
+    const currentValueSOL = currentBalanceSOL * currentShare;
+    const currentValueUSD = currentValueSOL * solPrice;
 
-    // Calculer les frais mensuels
-    const totalMonths = this.calculateMonthsSinceStart(userInvestments);
-    const monthlyFees = this.calculateMonthlyFees(userShare, totalMonths);
+    // Calculer les frais mensuels basés sur l'évolution des shares
+    const { weightedMonths } = await this.calculateUserShareEvolution(userId, await db.getAllInvestments());
+    const monthlyFeesUSD = this.monthlyPoolCost * weightedMonths;
 
-    // PNL net
-    const grossPNL = shareValue - userTotalInvested;
-    const netPNL = grossPNL - monthlyFees;
-    const pnlPercentage = userTotalInvested > 0 ? (netPNL / userTotalInvested) * 100 : 0;
+    // PNL
+    const grossPNL_USD = currentValueUSD - userTotalUSD;
+    const netPNL_USD = grossPNL_USD - monthlyFeesUSD;
+    const pnlPercentage = userTotalUSD > 0 ? (netPNL_USD / userTotalUSD) * 100 : 0;
 
     return {
       userId,
       username: userInvestments[0].username,
-      totalInvested: userTotalInvested,
-      currentShare: userShare * 100, // En pourcentage
-      shareValue,
-      monthlyFees,
-      netPNL,
+      totalInvestedSOL: userTotalSOL,
+      totalInvestedUSD: userTotalUSD,
+      currentSharePercentage: currentShare * 100,
+      currentValueSOL,
+      currentValueUSD,
+      monthlyFeesUSD,
+      grossPNL_USD,
+      netPNL_USD,
       pnlPercentage
     };
   }
 
   /**
-   * Calcule le PNL pour tous les utilisateurs
+   * Formate le PNL pour Discord
    */
-  async calculateAllUsersPNL(currentPoolValue: number): Promise<UserPNL[]> {
-    const allInvestments = await db.getAllInvestments();
-    const uniqueUserIds = new Set(allInvestments.map(inv => inv.userId));
+  formatPNLForDisplay(pnl: UserPNL): string {
+    const signGross = pnl.grossPNL_USD >= 0 ? '+' : '';
+    const signNet = pnl.netPNL_USD >= 0 ? '+' : '';
+    const emoji = pnl.netPNL_USD >= 0 ? '📈' : '📉';
     
-    const results: UserPNL[] = [];
-    for (const userId of uniqueUserIds) {
-      const pnl = await this.calculateUserPNL(userId, currentPoolValue);
-      if (pnl) results.push(pnl);
-    }
-
-    return results;
+    return `${emoji} **PNL pour ${pnl.username}**\n\n` +
+           `💰 **Investissements:**\n` +
+           `   • Total: **${pnl.totalInvestedSOL.toFixed(4)} SOL** (~$${pnl.totalInvestedUSD.toFixed(2)})\n\n` +
+           `📊 **Position actuelle:**\n` +
+           `   • Part du pool: **${pnl.currentSharePercentage.toFixed(2)}%**\n` +
+           `   • Valeur: **${pnl.currentValueSOL.toFixed(4)} SOL** (~$${pnl.currentValueUSD.toFixed(2)})\n\n` +
+           `💸 **Performance:**\n` +
+           `   • PNL Brut: **${signGross}$${pnl.grossPNL_USD.toFixed(2)}**\n` +
+           `   • Frais mensuels: **-$${pnl.monthlyFeesUSD.toFixed(2)}**\n` +
+           `   • PNL Net: **${signNet}$${pnl.netPNL_USD.toFixed(2)} (${signNet}${pnl.pnlPercentage.toFixed(2)}%)**`;
   }
 
   /**
-   * Formate le PNL pour l'affichage Discord
+   * Récupère les statistiques globales du pool
    */
-  formatPNLForDisplay(pnl: UserPNL): string {
-    const sign = pnl.netPNL >= 0 ? '+' : '';
-    const emoji = pnl.netPNL >= 0 ? '📈' : '📉';
+  async getPoolStats(): Promise<{
+    totalInvestedSOL: number;
+    totalInvestedUSD: number;
+    currentValueSOL: number;
+    currentValueUSD: number;
+    totalPNL_USD: number;
+    pnlPercentage: number;
+    investorsCount: number;
+  }> {
+    await this.solanaTracker.syncDeposits();
+
+    const totalInvestedSOL = await db.getTotalInvested();
+    const currentValueSOL = await this.solanaTracker.getHotWalletBalance();
+    const solPrice = await this.solanaTracker.getSolPrice();
     
-    return `${emoji} **PNL pour ${pnl.username}**\n` +
-           `💰 Total investi: **$${pnl.totalInvested.toFixed(2)}**\n` +
-           `📊 Part actuelle: **${pnl.currentShare.toFixed(2)}%**\n` +
-           `💎 Valeur des parts: **$${pnl.shareValue.toFixed(2)}**\n` +
-           `📅 Frais mensuels: **$${pnl.monthlyFees.toFixed(2)}**\n` +
-           `━━━━━━━━━━━━━━━━━━━━\n` +
-           `🎯 **PNL Net: ${sign}$${pnl.netPNL.toFixed(2)} (${sign}${pnl.pnlPercentage.toFixed(2)}%)**`;
+    const totalInvestedUSD = totalInvestedSOL * solPrice;
+    const currentValueUSD = currentValueSOL * solPrice;
+    const totalPNL_USD = currentValueUSD - totalInvestedUSD;
+    const pnlPercentage = totalInvestedUSD > 0 ? (totalPNL_USD / totalInvestedUSD) * 100 : 0;
+    const investorsCount = await db.getUniqueInvestorsCount();
+
+    return {
+      totalInvestedSOL,
+      totalInvestedUSD,
+      currentValueSOL,
+      currentValueUSD,
+      totalPNL_USD,
+      pnlPercentage,
+      investorsCount
+    };
   }
 }

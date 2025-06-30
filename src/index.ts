@@ -7,15 +7,17 @@ dotenv.config();
 
 async function main() {
   try {
-    console.log('🚀 Démarrage du bot PNL...');
+    console.log('🚀 Démarrage du bot PNL avec tracking on-chain...');
 
     // Vérifier les variables d'environnement
     const token = process.env.DISCORD_TOKEN;
     const clientId = process.env.DISCORD_CLIENT_ID;
+    const hotWalletAddress = process.env.HOT_WALLET_ADDRESS;
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const monthlyPoolCost = parseFloat(process.env.MONTHLY_COST_USD || '40');
 
-    if (!token || !clientId) {
-      throw new Error('Les variables DISCORD_TOKEN et DISCORD_CLIENT_ID sont requises!');
+    if (!token || !clientId || !hotWalletAddress) {
+      throw new Error('Les variables DISCORD_TOKEN, DISCORD_CLIENT_ID et HOT_WALLET_ADDRESS sont requises!');
     }
 
     // Initialiser la base de données
@@ -24,7 +26,11 @@ async function main() {
     console.log('✅ Base de données initialisée');
 
     // Créer et démarrer le bot
-    const bot = new PNLBot(token, clientId, monthlyPoolCost);
+    const bot = new PNLBot(token, clientId, rpcUrl, hotWalletAddress, monthlyPoolCost);
+    
+    console.log('🔗 Hot wallet: ' + hotWalletAddress);
+    console.log('💰 Coût mensuel: $' + monthlyPoolCost);
+    
     await bot.start();
 
     // Gérer l'arrêt propre

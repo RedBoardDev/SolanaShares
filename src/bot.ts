@@ -1,18 +1,26 @@
 import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, ChatInputCommandInteraction } from 'discord.js';
 import { PNLCalculator } from './pnl-calculator';
+import { SolanaTracker } from './solana-tracker';
 import { db } from './database';
 
 export class PNLBot {
   private client: Client;
   private pnlCalculator: PNLCalculator;
+  private solanaTracker: SolanaTracker;
   private token: string;
   private clientId: string;
-  private currentPoolValue: number = 0; // Valeur actuelle du pool (à mettre à jour)
 
-  constructor(token: string, clientId: string, monthlyPoolCost: number = 40) {
+  constructor(
+    token: string, 
+    clientId: string, 
+    rpcUrl: string,
+    hotWalletAddress: string,
+    monthlyPoolCost: number = 40
+  ) {
     this.token = token;
     this.clientId = clientId;
-    this.pnlCalculator = new PNLCalculator(monthlyPoolCost);
+    this.solanaTracker = new SolanaTracker(rpcUrl, hotWalletAddress);
+    this.pnlCalculator = new PNLCalculator(this.solanaTracker, monthlyPoolCost);
     
     this.client = new Client({
       intents: [
@@ -27,6 +35,8 @@ export class PNLBot {
   private setupEventHandlers(): void {
     this.client.once('ready', () => {
       console.log(`✅ Bot connecté en tant que ${this.client.user?.tag}`);
+      // Synchroniser les dépôts au démarrage
+      this.solanaTracker.syncDeposits().catch(console.error);
     });
 
     this.client.on('interactionCreate', async (interaction) => {
@@ -56,14 +66,14 @@ export class PNLBot {
       case 'pnl':
         await this.handlePNLCommand(interaction);
         break;
-      case 'invest':
-        await this.handleInvestCommand(interaction);
+      case 'wallet':
+        await this.handleWalletCommand(interaction);
         break;
       case 'pool':
         await this.handlePoolCommand(interaction);
         break;
-      case 'setpool':
-        await this.handleSetPoolCommand(interaction);
+      case 'sync':
+        await this.handleSyncCommand(interaction);
         break;
       default:
         await interaction.reply({
@@ -77,11 +87,21 @@ export class PNLBot {
     await interaction.deferReply({ ephemeral: true });
 
     const userId = interaction.user.id;
-    const pnl = await this.pnlCalculator.calculateUserPNL(userId, this.currentPoolValue);
+    
+    // Vérifier si l'utilisateur a un wallet associé
+    const userWallet = await db.getUserWallet(userId);
+    if (!userWallet) {
+      await interaction.editReply({
+        content: '❌ Vous devez d\'abord associer votre wallet Solana avec `/wallet <address>`.',
+      });
+      return;
+    }
+
+    const pnl = await this.pnlCalculator.calculateUserPNL(userId);
 
     if (!pnl) {
       await interaction.editReply({
-        content: '❌ Vous n\'avez pas encore investi dans le pool.',
+        content: '❌ Aucun investissement trouvé. Vos dépôts seront détectés automatiquement après synchronisation.',
       });
       return;
     }
@@ -92,12 +112,13 @@ export class PNLBot {
     });
   }
 
-  private async handleInvestCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-    const amount = interaction.options.getNumber('amount', true);
+  private async handleWalletCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    const address = interaction.options.getString('address', true);
     
-    if (amount <= 0) {
+    // Valider l'adresse Solana
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
       await interaction.reply({
-        content: '❌ Le montant doit être supérieur à 0.',
+        content: '❌ Adresse Solana invalide.',
         ephemeral: true,
       });
       return;
@@ -105,70 +126,68 @@ export class PNLBot {
 
     await interaction.deferReply({ ephemeral: true });
 
-    await db.addInvestment(
+    // Vérifier si l'adresse est déjà utilisée
+    const existingUser = await db.getUserByWallet(address);
+    if (existingUser && existingUser.userId !== interaction.user.id) {
+      await interaction.editReply({
+        content: '❌ Cette adresse est déjà associée à un autre utilisateur.',
+      });
+      return;
+    }
+
+    // Enregistrer ou mettre à jour l'association
+    await db.addUserWallet(
       interaction.user.id,
       interaction.user.username,
-      amount
+      address
     );
 
     await interaction.editReply({
-      content: `✅ Investissement de **$${amount.toFixed(2)}** enregistré avec succès!\n` +
-               `Utilisez \`/pnl\` pour voir votre performance.`,
+      content: `✅ Votre wallet a été associé avec succès!\n\n` +
+               `**Adresse:** \`${address}\`\n\n` +
+               `📌 **Important:** Envoyez vos dépôts depuis cette adresse vers le hot wallet pour qu'ils soient comptabilisés.\n` +
+               `Les dépôts sont synchronisés automatiquement toutes les heures.`,
     });
   }
 
   private async handlePoolCommand(interaction: ChatInputCommandInteraction): Promise<void> {
     await interaction.deferReply();
 
-    const totalInvested = await db.getTotalInvested();
-    const investorsCount = await db.getUniqueInvestorsCount();
-    const latestSnapshot = await db.getLatestSnapshot();
-    
-    const pnlTotal = this.currentPoolValue - totalInvested;
-    const pnlPercentage = totalInvested > 0 ? (pnlTotal / totalInvested) * 100 : 0;
-    const sign = pnlTotal >= 0 ? '+' : '';
+    const stats = await this.pnlCalculator.getPoolStats();
+    const sign = stats.totalPNL_USD >= 0 ? '+' : '';
 
-    let content = `📊 **État du Pool de Trading**\n\n` +
-                  `👥 Nombre d'investisseurs: **${investorsCount}**\n` +
-                  `💰 Total investi: **$${totalInvested.toFixed(2)}**\n` +
-                  `💎 Valeur actuelle: **$${this.currentPoolValue.toFixed(2)}**\n` +
-                  `📈 PNL Global: **${sign}$${pnlTotal.toFixed(2)} (${sign}${pnlPercentage.toFixed(2)}%)**\n`;
-
-    if (latestSnapshot) {
-      const date = new Date(latestSnapshot.timestamp);
-      content += `\n📅 Dernière mise à jour: ${date.toLocaleString()}`;
-    }
+    const content = `📊 **État du Pool de Trading**\n\n` +
+                    `👥 Nombre d'investisseurs: **${stats.investorsCount}**\n` +
+                    `💰 Total investi: **${stats.totalInvestedSOL.toFixed(4)} SOL** (~$${stats.totalInvestedUSD.toFixed(2)})\n` +
+                    `💎 Valeur actuelle: **${stats.currentValueSOL.toFixed(4)} SOL** (~$${stats.currentValueUSD.toFixed(2)})\n` +
+                    `📈 PNL Global: **${sign}$${stats.totalPNL_USD.toFixed(2)} (${sign}${stats.pnlPercentage.toFixed(2)}%)**\n\n` +
+                    `_Dernière synchronisation: ${new Date().toLocaleString()}_`;
 
     await interaction.editReply({ content });
   }
 
-  private async handleSetPoolCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-    // Vérifier si l'utilisateur est admin (à adapter selon vos besoins)
+  private async handleSyncCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    // Vérifier si l'utilisateur est admin
     if (!interaction.memberPermissions?.has('Administrator')) {
       await interaction.reply({
-        content: '❌ Seuls les administrateurs peuvent mettre à jour la valeur du pool.',
+        content: '❌ Seuls les administrateurs peuvent forcer la synchronisation.',
         ephemeral: true,
       });
       return;
     }
 
-    const value = interaction.options.getNumber('value', true);
-    
-    if (value < 0) {
-      await interaction.reply({
-        content: '❌ La valeur du pool ne peut pas être négative.',
-        ephemeral: true,
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      await this.solanaTracker.syncDeposits();
+      await interaction.editReply({
+        content: '✅ Synchronisation des dépôts terminée!',
       });
-      return;
+    } catch (error) {
+      await interaction.editReply({
+        content: '❌ Erreur lors de la synchronisation.',
+      });
     }
-
-    this.currentPoolValue = value;
-    await db.addPoolSnapshot(value);
-
-    await interaction.reply({
-      content: `✅ Valeur du pool mise à jour: **$${value.toFixed(2)}**`,
-      ephemeral: true,
-    });
   }
 
   async registerCommands(): Promise<void> {
@@ -178,13 +197,12 @@ export class PNLBot {
         .setDescription('Affiche votre PNL personnel avec prise en compte des frais'),
       
       new SlashCommandBuilder()
-        .setName('invest')
-        .setDescription('Enregistre un nouvel investissement')
-        .addNumberOption(option =>
-          option.setName('amount')
-            .setDescription('Montant investi en USD')
+        .setName('wallet')
+        .setDescription('Associe votre wallet Solana à votre compte Discord')
+        .addStringOption(option =>
+          option.setName('address')
+            .setDescription('Votre adresse Solana')
             .setRequired(true)
-            .setMinValue(0.01)
         ),
       
       new SlashCommandBuilder()
@@ -192,14 +210,8 @@ export class PNLBot {
         .setDescription('Affiche les statistiques globales du pool'),
       
       new SlashCommandBuilder()
-        .setName('setpool')
-        .setDescription('Met à jour la valeur actuelle du pool (Admin uniquement)')
-        .addNumberOption(option =>
-          option.setName('value')
-            .setDescription('Valeur totale actuelle du pool en USD')
-            .setRequired(true)
-            .setMinValue(0)
-        ),
+        .setName('sync')
+        .setDescription('Force la synchronisation des dépôts (Admin uniquement)'),
     ].map(command => command.toJSON());
 
     const rest = new REST().setToken(this.token);
@@ -221,6 +233,11 @@ export class PNLBot {
   async start(): Promise<void> {
     await this.registerCommands();
     await this.client.login(this.token);
+    
+    // Synchroniser les dépôts périodiquement (toutes les heures)
+    setInterval(() => {
+      this.solanaTracker.syncDeposits().catch(console.error);
+    }, 60 * 60 * 1000);
   }
 
   async stop(): Promise<void> {

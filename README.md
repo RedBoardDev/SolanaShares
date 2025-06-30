@@ -1,128 +1,101 @@
-# Bot Discord PNL Simple
+# Bot Discord PNL avec tracking on-chain Solana
 
-Un bot Discord simplifié pour calculer le PNL (Profit and Loss) d'un pool de trading avec partage des coûts mensuels.
+Bot Discord pour suivre le PNL (Profit & Loss) d'un pool de trading Solana avec tracking automatique des dépôts on-chain et calcul précis des shares.
 
-## 🚀 Fonctionnalités
+## Fonctionnalités
 
-- 📊 Calcul du PNL individuel avec prise en compte des shares
-- 💰 Tracking des investissements multiples par utilisateur
-- 📅 Calcul automatique des frais mensuels (40$/mois partagés selon les parts)
-- 🎯 Vue globale du pool de trading
-- 💡 Interface simple via commandes Discord
+- **Tracking automatique on-chain** : Scanne les transactions Solana pour détecter les dépôts
+- **Calcul précis des shares** : Les parts évoluent à chaque nouveau dépôt dans le pool
+- **Calcul du PNL** : Basé sur la valeur actuelle du hot wallet
+- **Partage des frais** : $40/mois répartis selon les shares pondérées dans le temps
+- **Association wallet-utilisateur** : Chaque utilisateur associe son wallet Solana
 
-## 📋 Prérequis
+## Installation
 
-- Node.js 18+ 
-- Un bot Discord configuré
-- Les tokens Discord (bot token et client ID)
-
-## 🛠️ Installation
-
-1. **Cloner le projet**
-```bash
-git clone <url>
-cd simple-pnl-bot
-```
-
-2. **Installer les dépendances**
+1. Cloner le repository
+2. Installer les dépendances :
 ```bash
 npm install
 ```
 
-3. **Configurer l'environnement**
-```bash
-cp .env.example .env
-# Éditer .env avec vos tokens Discord
+3. Créer un fichier `.env` :
+```env
+# Discord
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CLIENT_ID=your_discord_client_id
+
+# Pool settings
+HOT_WALLET_ADDRESS=your_solana_hot_wallet_address
+MONTHLY_COST_USD=40
+
+# Solana RPC (optionnel)
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 ```
 
-## ⚙️ Configuration
-
-Éditer le fichier `.env` :
-- `DISCORD_TOKEN` : Le token de votre bot Discord
-- `DISCORD_CLIENT_ID` : L'ID client de votre application Discord
-- `MONTHLY_COST_USD` : Coût mensuel du pool (défaut: 40$)
-
-## 🎮 Commandes Discord
-
-### `/pnl`
-Affiche votre PNL personnel avec :
-- Total investi
-- Part actuelle dans le pool (%)
-- Valeur actuelle de vos parts
-- Frais mensuels à votre charge
-- PNL net après frais
-
-### `/invest <amount>`
-Enregistre un nouvel investissement
-- `amount` : Montant en USD
-
-### `/pool`
-Affiche les statistiques globales :
-- Nombre d'investisseurs
-- Total investi
-- Valeur actuelle du pool
-- PNL global
-
-### `/setpool <value>` (Admin)
-Met à jour la valeur actuelle du pool
-- `value` : Valeur totale en USD
-
-## 🚦 Démarrage
-
+4. Lancer le bot :
 ```bash
-# Mode développement (avec rechargement automatique)
 npm run dev
-
-# Build pour production
-npm run build
-
-# Démarrer en production
-npm start
 ```
 
-## 📊 Calcul du PNL
+## Commandes Discord
 
-Le bot calcule le PNL selon cette formule :
+- `/wallet <address>` - Associe votre wallet Solana à votre compte Discord
+- `/pnl` - Affiche votre PNL personnel avec les frais
+- `/pool` - Affiche les statistiques globales du pool
+- `/sync` - Force la synchronisation des dépôts (Admin uniquement)
 
-1. **Part de l'utilisateur** = (Investissement utilisateur / Total investi) × 100
-2. **Valeur des parts** = Valeur actuelle du pool × Part utilisateur
-3. **Frais mensuels** = Part utilisateur × 40$ × Nombre de mois
-4. **PNL Net** = Valeur des parts - Total investi - Frais mensuels
+## Comment ça marche
 
-## 💡 Exemple
+### 1. Association du wallet
+Les utilisateurs doivent d'abord associer leur wallet Solana avec `/wallet <address>`.
 
-- Alice investit 1000$ (50% du pool)
-- Bob investit 1000$ (50% du pool)
-- Après 2 mois, le pool vaut 2500$
-- Frais: 40$/mois × 2 mois = 80$ (40$ chacun)
+### 2. Détection des dépôts
+Le bot scanne automatiquement les transactions du hot wallet toutes les heures pour détecter les nouveaux dépôts. Seuls les dépôts provenant de wallets associés sont comptabilisés.
 
-**PNL d'Alice:**
-- Investi: 1000$
-- Valeur des parts: 1250$ (50% de 2500$)
-- Frais: 40$
-- **PNL Net: +210$ (+21%)**
+### 3. Calcul des shares
+Les shares évoluent dynamiquement :
+- À chaque nouveau dépôt, les shares sont recalculées
+- Un utilisateur qui dépose tôt aura une part plus importante sur la durée
+- Les shares sont pondérées par le temps pour le calcul des frais
 
-## 🔧 Base de données
+### 4. Calcul du PNL
+```
+PNL Brut = Valeur actuelle des parts - Total investi
+Frais = $40/mois × Share moyenne pondérée × Nombre de mois
+PNL Net = PNL Brut - Frais
+```
 
-Le bot utilise SQLite pour stocker :
-- Les investissements de chaque utilisateur
-- Les snapshots de la valeur du pool
-- Automatiquement créée au premier lancement
+### 5. Exemple
+- Alice dépose 10 SOL (100% du pool)
+- Après 1 mois, Bob dépose 10 SOL (maintenant 50% chacun)
+- Après 2 mois total :
+  - Alice paie : $40 × 1 mois à 100% + $40 × 1 mois à 50% = $60
+  - Bob paie : $40 × 1 mois à 50% = $20
 
-## 📝 Notes
+## Architecture
 
-- Les frais mensuels sont calculés depuis le premier investissement
-- Les parts sont recalculées à chaque nouvel investissement
-- La valeur du pool doit être mise à jour manuellement par un admin
-- Toutes les valeurs sont en USD
+- **SQLite** : Base de données locale pour stocker les associations et les dépôts
+- **@solana/web3.js** : Interaction avec la blockchain Solana
+- **discord.js** : Bot Discord
+- **TypeScript** : Typage fort et meilleure DX
 
-## 🤝 Support
+## Sécurité
 
-En cas de problème, vérifiez :
-1. Les tokens Discord sont corrects
-2. Le bot a les permissions nécessaires sur votre serveur
-3. Les logs dans la console pour les erreurs
+- Les clés privées ne sont jamais stockées
+- Seules les adresses publiques sont enregistrées
+- Les dépôts sont vérifiés on-chain
 
-## 📄 License
+## Notes importantes
 
-MIT
+- Le bot nécessite un RPC Solana fonctionnel
+- Les dépôts doivent être envoyés depuis le wallet associé
+- La synchronisation peut prendre du temps selon le nombre de transactions
+- Le prix du SOL est fixé à $100 (à remplacer par une API de prix réelle)
+
+## TODO
+
+- [ ] Intégrer une API de prix pour SOL/USD en temps réel
+- [ ] Ajouter support pour les tokens SPL
+- [ ] Historique détaillé des transactions
+- [ ] Exports CSV pour la comptabilité
+- [ ] Notifications Discord pour les nouveaux dépôts
