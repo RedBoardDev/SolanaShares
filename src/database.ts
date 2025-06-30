@@ -28,10 +28,14 @@ class DatabaseManager {
   private db: Database | null = null;
 
   async initialize() {
+    const dbPath = process.env.DATABASE_PATH || './pool.db';
+    
     this.db = await open({
-      filename: './pool.db',
+      filename: dbPath,
       driver: sqlite3.Database
     });
+
+    console.log(`📁 Base de données initialisée: ${dbPath}`);
 
     // Créer les tables si elles n'existent pas
     await this.db.exec(`
