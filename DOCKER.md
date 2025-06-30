@@ -27,7 +27,7 @@ docker-compose up -d
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_client_id_here
 
-# Solana (OBLIGATOIRE)  
+# Solana (OBLIGATOIRE)
 HOT_WALLET_ADDRESS=your_hot_wallet_address
 
 # Optionnel
@@ -44,7 +44,7 @@ FROM node:20-alpine AS builder
 # Installation des dépendances et compilation TypeScript
 
 # Stage 2: Production (image finale légère)
-FROM node:20-alpine AS production  
+FROM node:20-alpine AS production
 # Copie uniquement les fichiers nécessaires
 ```
 
