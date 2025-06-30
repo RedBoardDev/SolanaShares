@@ -8,25 +8,21 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - DATABASE_URL=mongodb://mongodb:27017/solana-shares
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_REGION=us-east-1
     env_file:
       - .env
     depends_on:
-      - mongodb
+      - dynamodb-local
     volumes:
       - .:/app
       - /app/node_modules
     restart: unless-stopped
 
-  mongodb:
-    image: mongo:7
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
     ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: solana-shares
-    volumes:
-      - mongodb_data:/data/db
+      - "8000:8000"
     restart: unless-stopped
-
-volumes:
-  mongodb_data:

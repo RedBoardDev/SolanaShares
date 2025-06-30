@@ -19,9 +19,6 @@ const envSchema = z.object({
   SOLANA_RPC_URL: z.string().url().default('https://api.mainnet-beta.solana.com'),
   SOLANA_HOT_WALLET_PRIVATE_KEY: z.string().min(1, 'Hot wallet private key is required'),
   
-  // Database
-  DATABASE_URL: z.string().min(1, 'Database URL is required'),
-  
   // API
   PORT: z.string().transform(Number).pipe(z.number().int().positive()).default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Set working directory
 WORKDIR /app
 
@@ -12,10 +15,6 @@ RUN npm install
 
 # Copy source code
 COPY src/ ./src/
-COPY prisma/ ./prisma/
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Build the application
 RUN npm run build

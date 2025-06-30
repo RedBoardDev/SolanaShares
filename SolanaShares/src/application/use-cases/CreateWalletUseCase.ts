@@ -12,7 +12,7 @@ export interface CreateWalletRequest {
 
 export interface CreateWalletResponse {
   walletAddress: string;
-  mnemonic: string;
+  privateKey: string;
   success: boolean;
   error?: string;
 }
@@ -36,7 +36,7 @@ export class CreateWalletUseCase {
       if (existingWallet) {
         return {
           walletAddress: '',
-          mnemonic: '',
+          privateKey: '',
           success: false,
           error: 'User already has a wallet',
         };
@@ -46,13 +46,15 @@ export class CreateWalletUseCase {
       const user = User.create(request.userId, request.username);
       await this.userRepository.save(user);
 
-      // Generate new key pair and mnemonic
+      // Generate new key pair
       const keyPair = await this.walletService.generateKeyPair();
-      const mnemonic = this.walletService.generateMnemonic();
 
-      // Encrypt the seed (we'll use the mnemonic as seed for simplicity)
+      // Convert private key to base58 string for storage
+      const privateKeyBase58 = Buffer.from(keyPair.privateKey).toString('base64');
+
+      // Encrypt the private key for storage
       const encryptedSeed = await this.encryptionService.encryptSeed(
-        mnemonic,
+        privateKeyBase58,
         env.KMS_CMK_USER_KEY_ID
       );
 
@@ -73,7 +75,7 @@ export class CreateWalletUseCase {
 
       return {
         walletAddress: keyPair.publicKey,
-        mnemonic,
+        privateKey: privateKeyBase58,
         success: true,
       };
     } catch (error) {
@@ -83,7 +85,7 @@ export class CreateWalletUseCase {
 
       return {
         walletAddress: '',
-        mnemonic: '',
+        privateKey: '',
         success: false,
         error: `Failed to create wallet: ${error}`,
       };

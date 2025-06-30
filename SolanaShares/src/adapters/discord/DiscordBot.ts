@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, ChatInputCommandInteraction } from 'discord.js';
 import { container } from '../../infra/DependencyContainer';
 import { CreateWalletUseCase } from '../../application/use-cases/CreateWalletUseCase';
+import { ExportWalletUseCase } from '../../application/use-cases/ExportWalletUseCase';
 import { LoggerService } from '../../domain/ports/services';
 import { env } from '../../config/environment';
 
@@ -57,6 +58,9 @@ export class DiscordBot {
       case 'start':
         await this.handleStartCommand(interaction);
         break;
+      case 'export':
+        await this.handleExportCommand(interaction);
+        break;
       case 'wallet':
         await this.handleWalletCommand(interaction);
         break;
@@ -81,9 +85,15 @@ export class DiscordBot {
     });
 
     if (!result.success) {
-      await interaction.editReply({
-        content: `❌ ${result.error}`,
-      });
+      if (result.error?.includes('already has a wallet')) {
+        await interaction.editReply({
+          content: '⚠️ You already have a wallet! Use `/export` to get your private key.',
+        });
+      } else {
+        await interaction.editReply({
+          content: `❌ ${result.error}`,
+        });
+      }
       return;
     }
 
@@ -92,10 +102,14 @@ export class DiscordBot {
       await interaction.user.send({
         content: `🎉 **Your Solana wallet has been created!**\n\n` +
                 `**Wallet Address:** \`${result.walletAddress}\`\n\n` +
-                `**⚠️ IMPORTANT - Your Seed Phrase:**\n` +
-                `\`\`\`\n${result.mnemonic}\n\`\`\`\n\n` +
-                `**⚠️ Keep this seed phrase safe and never share it with anyone!**\n` +
-                `You will need it to recover your wallet if needed.`,
+                `**⚠️ IMPORTANT - Your Private Key (Base64):**\n` +
+                `\`\`\`\n${result.privateKey}\n\`\`\`\n\n` +
+                `**⚠️ Keep this private key safe and never share it with anyone!**\n` +
+                `You can import this wallet in Phantom or any Solana wallet app.\n\n` +
+                `To convert to array format for Phantom import:\n` +
+                `1. Decode the base64 string\n` +
+                `2. Convert to byte array\n\n` +
+                `Use \`/export\` command anytime to retrieve your private key again.`,
       });
 
       await interaction.editReply({
@@ -105,8 +119,46 @@ export class DiscordBot {
       await interaction.editReply({
         content: `✅ Wallet created successfully!\n\n` +
                 `**Address:** \`${result.walletAddress}\`\n\n` +
-                `⚠️ I couldn't send you a DM. Please save this information securely:\n` +
-                `**Seed phrase:** ||${result.mnemonic}||`,
+                `⚠️ I couldn't send you a DM. Please enable DMs from server members and use \`/export\` to get your private key.`,
+      });
+    }
+  }
+
+  private async handleExportCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply({ ephemeral: true });
+
+    const exportWalletUseCase = container.resolve<ExportWalletUseCase>('ExportWalletUseCase');
+    const result = await exportWalletUseCase.execute({
+      userId: interaction.user.id,
+    });
+
+    if (!result.success) {
+      await interaction.editReply({
+        content: `❌ ${result.error}`,
+      });
+      return;
+    }
+
+    // Send wallet info via DM
+    try {
+      await interaction.user.send({
+        content: `🔐 **Your Solana Wallet Details**\n\n` +
+                `**Wallet Address:** \`${result.walletAddress}\`\n\n` +
+                `**Private Key (Base64):**\n` +
+                `\`\`\`\n${result.privateKey}\n\`\`\`\n\n` +
+                `**⚠️ Keep this private key safe and never share it with anyone!**\n` +
+                `You can import this wallet in Phantom or any Solana wallet app.`,
+      });
+
+      await interaction.editReply({
+        content: '✅ Check your DMs for your wallet details.',
+      });
+    } catch (error) {
+      await interaction.editReply({
+        content: `⚠️ I couldn't send you a DM. Please enable DMs from server members.\n\n` +
+                `**Wallet Address:** \`${result.walletAddress}\`\n\n` +
+                `For security reasons, I cannot display your private key in public channels. ` +
+                `Please enable DMs and try again.`,
       });
     }
   }
@@ -130,6 +182,10 @@ export class DiscordBot {
       new SlashCommandBuilder()
         .setName('start')
         .setDescription('Create your personal trading wallet'),
+      
+      new SlashCommandBuilder()
+        .setName('export')
+        .setDescription('Export your wallet private key'),
       
       new SlashCommandBuilder()
         .setName('wallet')

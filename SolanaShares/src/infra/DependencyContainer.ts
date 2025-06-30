@@ -1,10 +1,9 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { PrismaClient } from '@prisma/client';
 
 // Repositories
-import { PrismaUserRepository } from './prisma/PrismaUserRepository';
-import { PrismaWalletRepository } from './prisma/PrismaWalletRepository';
+import { DynamoUserRepository } from './dynamodb/DynamoUserRepository';
+import { DynamoWalletRepository } from './dynamodb/DynamoWalletRepository';
 
 // Services
 import { PinoLogger } from './logger/PinoLogger';
@@ -15,22 +14,12 @@ import { env } from '../config/environment';
 
 // Use Cases
 import { CreateWalletUseCase } from '../application/use-cases/CreateWalletUseCase';
+import { ExportWalletUseCase } from '../application/use-cases/ExportWalletUseCase';
 
 export function setupDependencyContainer(): void {
-  // Database
-  const prisma = new PrismaClient({
-    log: ['query', 'info', 'warn', 'error'],
-  });
-  container.registerInstance('PrismaClient', prisma);
-
-  // Repositories - Register as factories to inject PrismaClient
-  container.register('UserRepository', {
-    useFactory: () => new PrismaUserRepository(prisma),
-  });
-  
-  container.register('WalletRepository', {
-    useFactory: () => new PrismaWalletRepository(prisma),
-  });
+  // Repositories
+  container.registerSingleton('UserRepository', DynamoUserRepository);
+  container.registerSingleton('WalletRepository', DynamoWalletRepository);
 
   // Services
   container.registerSingleton('LoggerService', PinoLogger);
@@ -47,6 +36,7 @@ export function setupDependencyContainer(): void {
 
   // Use Cases
   container.registerSingleton('CreateWalletUseCase', CreateWalletUseCase);
+  container.registerSingleton('ExportWalletUseCase', ExportWalletUseCase);
 }
 
 export { container };

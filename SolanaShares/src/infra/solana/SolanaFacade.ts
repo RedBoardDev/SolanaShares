@@ -8,8 +8,7 @@ import {
   sendAndConfirmTransaction,
   clusterApiUrl,
 } from '@solana/web3.js';
-import { generateMnemonic, mnemonicToSeedSync } from 'bip39';
-import { derivePath } from 'ed25519-hd-key';
+import * as bip39 from 'bip39';
 import { SolanaService, WalletService, KeyPair } from '../../domain/ports/services';
 import { env } from '../../config/environment';
 
@@ -21,10 +20,8 @@ export class SolanaFacade implements SolanaService, WalletService {
   }
 
   async generateKeyPair(): Promise<KeyPair> {
-    const mnemonic = this.generateMnemonic();
-    const seed = mnemonicToSeedSync(mnemonic);
-    const derivedSeed = derivePath("m/44'/501'/0'/0'", seed.toString('hex')).key;
-    const keypair = Keypair.fromSeed(derivedSeed);
+    // Generate a new keypair directly without mnemonic
+    const keypair = Keypair.generate();
     
     return {
       publicKey: keypair.publicKey.toBase58(),
@@ -37,7 +34,7 @@ export class SolanaFacade implements SolanaService, WalletService {
   }
 
   generateMnemonic(): string {
-    return generateMnemonic();
+    return bip39.generateMnemonic();
   }
 
   getKeyPairFromPrivateKey(privateKey: Uint8Array): KeyPair {

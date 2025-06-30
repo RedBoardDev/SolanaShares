@@ -57,7 +57,7 @@ export class FastifyApp {
         return reply.send({
           success: true,
           walletAddress: result.walletAddress,
-          mnemonic: result.mnemonic,
+          privateKey: result.privateKey,
         });
       } catch (error) {
         this.logger.error('Error in /wallet/start endpoint', error as Error);
