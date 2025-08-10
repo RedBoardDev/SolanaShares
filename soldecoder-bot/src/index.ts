@@ -12,6 +12,8 @@ import { serverSettingsCommand } from '@presentation/commands/server-settings.co
 import { nftPriceCommand } from '@presentation/commands/nft-price.command';
 import { positionSizeCommand } from '@presentation/commands/position-size.command';
 import { globalPositionsCommand } from '@presentation/commands/global-positions.command';
+import { startCommand } from '@presentation/commands/start.command';
+import { helpCommand } from '@presentation/commands/help.command';
 import { InteractionRouter } from '@presentation/listeners/interactions/interaction-router';
 import { PositionDisplayScheduler } from '@infrastructure/services/position-display-scheduler.service';
 
@@ -20,11 +22,13 @@ const DISCORD_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessag
 async function registerSlashCommands(clientId: string, token: string) {
   const rest = new REST({ version: '10' }).setToken(token);
   const payload = [
+    startCommand.data.toJSON(),
     followedChannelsCommand.data.toJSON(),
     serverSettingsCommand.data.toJSON(),
     nftPriceCommand.data.toJSON(),
     positionSizeCommand.data.toJSON(),
     globalPositionsCommand.data.toJSON(),
+    helpCommand.data.toJSON(),
   ];
 
   try {
@@ -43,6 +47,9 @@ function wireInteractionHandler(client: Client) {
     try {
       if (interaction.isChatInputCommand()) {
         switch (interaction.commandName) {
+          case startCommand.data.name:
+            await startCommand.execute(interaction);
+            break;
           case followedChannelsCommand.data.name:
             await followedChannelsCommand.execute(interaction);
             break;
@@ -57,6 +64,9 @@ function wireInteractionHandler(client: Client) {
             break;
           case globalPositionsCommand.data.name:
             await globalPositionsCommand.execute(interaction);
+            break;
+          case helpCommand.data.name:
+            await helpCommand.execute(interaction);
             break;
           default:
             await interaction.reply({
