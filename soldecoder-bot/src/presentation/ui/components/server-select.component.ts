@@ -1,36 +1,38 @@
 import { ActionRowBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType } from 'discord.js';
-import { COMMON_TIMEZONES, Timezone } from '@domain/value-objects/timezone';
+import { COMMON_TIMEZONES, Timezone, TimezoneOption, TimezoneHelper } from '@domain/value-objects/timezone';
 import { buildServerChannelSelectComponent } from './channel-select.component';
 
 export function buildTimezoneSelectComponent() {
-  const timezoneOptions = COMMON_TIMEZONES.map((tz) => {
+  const timezoneOptions = COMMON_TIMEZONES.map((tzOption) => {
+    const { name, value } = tzOption;
     let region = 'Other';
-    let label: string = tz as string;
+    let emoji = '🌍';
 
-    if (tz.startsWith('Europe/')) {
-      region = '🇪🇺 Europe';
-      label = tz.replace('Europe/', '');
-    } else if (tz.startsWith('America/')) {
-      region = '🇺🇸 Americas';
-      label = tz.replace('America/', '');
-    } else if (tz.startsWith('Asia/')) {
-      region = '🇯🇵 Asia';
-      label = tz.replace('Asia/', '');
-    } else if (tz.startsWith('Australia/') || tz.startsWith('Pacific/')) {
-      region = '🇦🇺 Oceania';
-      label = tz.replace(/^(Australia|Pacific)\//, '');
-    } else if (tz.startsWith('Africa/')) {
-      region = '🌍 Africa';
-      label = tz.replace('Africa/', '');
-    } else if (tz === 'Etc/UTC') {
-      region = '🌐 UTC';
-      label = 'UTC';
+    // Determine region and emoji based on timezone value
+    if (value.startsWith('Europe/')) {
+      region = 'Europe';
+      emoji = '🇪🇺';
+    } else if (value.startsWith('America/')) {
+      region = 'Americas';
+      emoji = '🇺🇸';
+    } else if (value.startsWith('Asia/')) {
+      region = 'Asia';
+      emoji = '🇯🇵';
+    } else if (value.startsWith('Australia/') || value.startsWith('Pacific/')) {
+      region = 'Oceania';
+      emoji = '🇦🇺';
+    } else if (value.startsWith('Africa/')) {
+      region = 'Africa';
+      emoji = '🌍';
+    } else if (value === 'Etc/UTC') {
+      region = 'UTC';
+      emoji = '🌐';
     }
 
     return {
-      label: `${label}`,
-      description: `${region} • ${tz}`,
-      value: tz as unknown as string,
+      label: name,
+      description: `${emoji} ${region} • ${value}`,
+      value: value,
     };
   });
 
@@ -38,7 +40,7 @@ export function buildTimezoneSelectComponent() {
     .addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('server:timezone:set')
-        .setPlaceholder('Select your timezone')
+        .setPlaceholder('🌍 Select your timezone...')
         .setMinValues(1)
         .setMaxValues(1)
         .addOptions(timezoneOptions.slice(0, 25)) // Discord limit
@@ -52,38 +54,13 @@ export function buildChannelSelectComponent() {
 }
 
 export function getTimezoneDisplayName(timezone: Timezone): string {
-  const timezoneMap: Record<string, string> = {
-    'Europe/London': '🇬🇧 London (GMT)',
-    'Europe/Paris': '🇫🇷 Paris (CET)',
-    'Europe/Berlin': '🇩🇪 Berlin (CET)',
-    'Europe/Moscow': '🇷🇺 Moscow (MSK)',
-    'Europe/Helsinki': '🇫🇮 Helsinki (EET)',
-    'Europe/Rome': '🇮🇹 Rome (CET)',
-    'Europe/Madrid': '🇪🇸 Madrid (CET)',
+  // Use the TimezoneHelper to get the proper display name
+  const timezoneOption = TimezoneHelper.getTimezoneOption(timezone);
 
-    'America/New_York': '🇺🇸 New York (EST)',
-    'America/Chicago': '🇺🇸 Chicago (CST)',
-    'America/Denver': '🇺🇸 Denver (MST)',
-    'America/Los_Angeles': '🇺🇸 Los Angeles (PST)',
-    'America/Toronto': '🇨🇦 Toronto (EST)',
-    'America/Sao_Paulo': '🇧🇷 São Paulo (BRT)',
-    'America/Mexico_City': '🇲🇽 Mexico City (CST)',
+  if (timezoneOption) {
+    return timezoneOption.name;
+  }
 
-    'Asia/Dubai': '🇦🇪 Dubai (GST)',
-    'Asia/Kolkata': '🇮🇳 Kolkata (IST)',
-    'Asia/Shanghai': '🇨🇳 Shanghai (CST)',
-    'Asia/Tokyo': '🇯🇵 Tokyo (JST)',
-    'Asia/Singapore': '🇸🇬 Singapore (SGT)',
-    'Asia/Seoul': '🇰🇷 Seoul (KST)',
-
-    'Australia/Sydney': '🇦🇺 Sydney (AEDT)',
-    'Pacific/Auckland': '🇳🇿 Auckland (NZDT)',
-
-    'Africa/Cairo': '🇪🇬 Cairo (EET)',
-    'Africa/Johannesburg': '🇿🇦 Johannesburg (SAST)',
-
-    'Etc/UTC': '🌐 UTC',
-  };
-
-  return timezoneMap[timezone] || timezone;
+  // Fallback to the timezone value if not found (shouldn't happen)
+  return timezone;
 }

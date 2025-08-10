@@ -17,6 +17,19 @@ export class WalletAddress {
     return new WalletAddress(address);
   }
 
+  static isValid(address: string): boolean {
+    if (!address || address.length < 32 || address.length > 44) {
+      return false;
+    }
+
+    try {
+      new PublicKey(address);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   get value(): string {
     return this._value;
   }

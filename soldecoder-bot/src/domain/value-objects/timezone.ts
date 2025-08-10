@@ -1,47 +1,49 @@
-export const COMMON_TIMEZONES = [
+export interface TimezoneOption {
+  name: string;
+  value: string;
+}
+
+export const COMMON_TIMEZONES: readonly TimezoneOption[] = [
   // Europe
-  'Europe/London', // Royaume-Uni
-  'Europe/Paris', // France
-  'Europe/Berlin', // Allemagne
-  'Europe/Moscow', // Russie
-  'Europe/Helsinki', // Finlande
-  'Europe/Rome', // Italie
-  'Europe/Madrid', // Espagne
+  { name: 'Europe/London (United Kingdom)', value: 'Europe/London' },
+  { name: 'Europe/Paris (France)', value: 'Europe/Paris' },
+  { name: 'Europe/Berlin (Deutschland)', value: 'Europe/Berlin' },
+  { name: 'Europe/Moscow (Russia)', value: 'Europe/Moscow' },
+  { name: 'Europe/Rome (Italia)', value: 'Europe/Rome' },
+  { name: 'Europe/Madrid (España)', value: 'Europe/Madrid' },
+  { name: 'Europe/Amsterdam (Nederland)', value: 'Europe/Amsterdam' },
+  { name: 'Europe/Stockholm (Sverige)', value: 'Europe/Stockholm' },
 
-  // Amériques
-  'America/New_York', // EST (USA)
-  'America/Chicago', // CST (USA)
-  'America/Denver', // MST (USA)
-  'America/Los_Angeles', // PST (USA)
-  'America/Toronto', // Canada Est
-  'America/Sao_Paulo', // Brésil
-  'America/Mexico_City', // Mexique
+  // Americas
+  { name: 'America/New_York (USA EST)', value: 'America/New_York' },
+  { name: 'America/Chicago (USA CST)', value: 'America/Chicago' },
+  { name: 'America/Denver (USA MST)', value: 'America/Denver' },
+  { name: 'America/Los_Angeles (USA PST)', value: 'America/Los_Angeles' },
+  { name: 'America/Toronto (Canada East)', value: 'America/Toronto' },
+  { name: 'America/Sao_Paulo (Brasil)', value: 'America/Sao_Paulo' },
+  { name: 'America/Mexico_City (México)', value: 'America/Mexico_City' },
 
-  // Asie
-  'Asia/Dubai', // Émirats
-  'Asia/Kolkata', // Inde
-  'Asia/Shanghai', // Chine
-  'Asia/Tokyo', // Japon
-  'Asia/Singapore', // Singapour
-  'Asia/Seoul', // Corée du Sud
+  // Asia
+  { name: 'Asia/Dubai (UAE)', value: 'Asia/Dubai' },
+  { name: 'Europe/Helsinki (Suomi)', value: 'Europe/Helsinki' },
+  { name: 'Asia/Shanghai (China)', value: 'Asia/Shanghai' },
+  { name: 'Asia/Tokyo (Japan)', value: 'Asia/Tokyo' },
+  { name: 'Asia/Singapore (Singapore)', value: 'Asia/Singapore' },
+  { name: 'Asia/Seoul (South Korea)', value: 'Asia/Seoul' },
 
-  // Océanie
-  'Australia/Sydney', // Australie Est
-  'Pacific/Auckland', // Nouvelle-Zélande
-
-  // Afrique
-  'Africa/Cairo', // Égypte
-  'Africa/Johannesburg', // Afrique du Sud
+  // Oceania
+  { name: 'Australia/Sydney (Australia East)', value: 'Australia/Sydney' },
+  { name: 'Pacific/Auckland (New Zealand)', value: 'Pacific/Auckland' },
 
   // UTC
-  'Etc/UTC',
+  { name: 'UTC (Universal Time)', value: 'Etc/UTC' },
 ] as const;
 
-export type Timezone = (typeof COMMON_TIMEZONES)[number];
+export type Timezone = (typeof COMMON_TIMEZONES)[number]['value'];
 
 // biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class TimezoneHelper {
-  static all(): Timezone[] {
+  static all(): TimezoneOption[] {
     return [...COMMON_TIMEZONES];
   }
 
@@ -50,6 +52,10 @@ export class TimezoneHelper {
   }
 
   static isValid(tz: string): tz is Timezone {
-    return (COMMON_TIMEZONES as readonly string[]).includes(tz);
+    return COMMON_TIMEZONES.some(option => option.value === tz);
+  }
+
+  static getTimezoneOption(value: string): TimezoneOption | undefined {
+    return COMMON_TIMEZONES.find(option => option.value === value);
   }
 }
