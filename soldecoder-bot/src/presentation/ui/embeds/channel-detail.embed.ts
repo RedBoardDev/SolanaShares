@@ -3,29 +3,38 @@ import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 
 export function buildChannelDetailEmbed(channelConfig: ChannelConfigEntity, channelName: string, tagDisplayName?: string) {
   const embed = new EmbedBuilder()
-    .setTitle(`⚙️ Channel Configuration`)
-    .setDescription(`**Channel:** <#${channelConfig.channelId}>`)
+    .setTitle(`📊 Channel Configuration: #${channelName}`)
+    .setDescription(`**Configuring monitoring for** <#${channelConfig.channelId}>`)
     .addFields(
       {
-        name: 'Current Settings',
+        name: '📋 Current Configuration',
         value: [
-          `**Notify on Close:** ${channelConfig.notifyOnClose ? '✅ Enabled' : '❌ Disabled'}`,
-          `**Threshold:** ${channelConfig.threshold > 0 ? `±${channelConfig.threshold}%` : 'Not set'}`,
-          `**Image Attachments:** ${channelConfig.image ? '✅ Enabled' : '❌ Disabled'}`,
-          `**Pin Messages:** ${channelConfig.pin ? '✅ Enabled' : '❌ Disabled'}`,
-          `**Tag on Notify:** ${tagDisplayName || 'None set'}`,
+          `**Close Notifications:** ${channelConfig.notifyOnClose ? '✅ Enabled' : '❌ Disabled'}`,
+          `**Alert Threshold:** ${channelConfig.threshold > 0 ? `±${channelConfig.threshold}%` : '❌ Not set'}`,
+          `**Position Images:** ${channelConfig.image ? '✅ Enabled' : '❌ Disabled'}`,
+          `**Auto-Pin Messages:** ${channelConfig.pin ? '✅ Enabled' : '❌ Disabled'}`,
+          `**Mention on Alert:** ${tagDisplayName || '❌ None configured'}`,
         ].join('\n'),
         inline: false,
       },
       {
-        name: '🔧 Action Buttons',
+        name: '💡 Feature Explanations',
         value: [
-          '• **🔔 ON/OFF** – toggle notifications on position close',
-          '• **📷 ON/OFF** – toggle image attachments on notify',
-          '• **📌 ON/OFF** – toggle pinning the notification message',
-          '• **📊 Threshold** – open modal to set ±% threshold',
-          '• **🏷️ Tag** – select or clear a user/role mention',
-          '• **⬅️ Back** – return to the channels list',
+          '• **Close Notifications**: Alert when positions are closed in this channel',
+          '• **Alert Threshold**: Trigger alerts when position changes by ±X%',
+          '• **Position Images**: Include charts and stats from LPAgent data',
+          '• **Auto-Pin Messages**: Pin important position notifications',
+          '• **Mention on Alert**: Tag specific users/roles on notifications',
+        ].join('\n'),
+        inline: false,
+      },
+      {
+        name: '🎯 Recommended Settings',
+        value: [
+          '• Enable **Close Notifications** for position tracking',
+        '• **Alert Threshold**: Ignore closed positions unless change exceeds this %',
+          '• Enable **Position Images** to see detailed charts',
+          '• Use **Auto-Pin** on each closed positions',
         ].join('\n'),
         inline: false,
       }
@@ -38,42 +47,45 @@ export function buildChannelDetailEmbed(channelConfig: ChannelConfigEntity, chan
 export function buildChannelDetailComponents(channelConfig: ChannelConfigEntity) {
   const components: ActionRowBuilder<any>[] = [];
 
-  const toggleRow = new ActionRowBuilder<ButtonBuilder>()
+  const notificationRow = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(
       new ButtonBuilder()
         .setCustomId(`channel:toggle:notifyOnClose:${channelConfig.channelId}`)
-        .setLabel(channelConfig.notifyOnClose ? 'Disable Notify' : 'Enable Notify')
+        .setLabel(channelConfig.notifyOnClose ? 'Disable Close Alerts' : 'Enable Close Alerts')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🔔'),
       new ButtonBuilder()
+        .setCustomId(`channel:threshold:${channelConfig.channelId}`)
+        .setLabel('Set Alert Threshold')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📊')
+    );
+
+  const displayRow = new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
         .setCustomId(`channel:toggle:image:${channelConfig.channelId}`)
-        .setLabel(channelConfig.image ? 'Disable Images' : 'Enable Images')
+        .setLabel(channelConfig.image ? 'Disable Position Images' : 'Enable Position Images')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('📷'),
       new ButtonBuilder()
         .setCustomId(`channel:toggle:pin:${channelConfig.channelId}`)
-        .setLabel(channelConfig.pin ? 'Disable Pin' : 'Enable Pin')
+        .setLabel(channelConfig.pin ? 'Disable Auto-Pin' : 'Enable Auto-Pin')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('📌'),
-      new ButtonBuilder()
-        .setCustomId(`channel:threshold:${channelConfig.channelId}`)
-        .setLabel('Set Threshold')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('📊')
+        .setEmoji('📌')
     );
 
   const tagRow = new ActionRowBuilder<ButtonBuilder>();
-
   tagRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`channel:tag:select_user:${channelConfig.channelId}`)
-      .setLabel('Tag User')
-      .setStyle(ButtonStyle.Primary)
+      .setLabel('Mention User')
+      .setStyle(ButtonStyle.Secondary)
       .setEmoji('👤'),
     new ButtonBuilder()
       .setCustomId(`channel:tag:select_role:${channelConfig.channelId}`)
-      .setLabel('Tag Role')
-      .setStyle(ButtonStyle.Primary)
+      .setLabel('Mention Role')
+      .setStyle(ButtonStyle.Secondary)
       .setEmoji('👥')
   );
 
@@ -81,7 +93,7 @@ export function buildChannelDetailComponents(channelConfig: ChannelConfigEntity)
     tagRow.addComponents(
       new ButtonBuilder()
         .setCustomId(`channel:tag:clear:${channelConfig.channelId}`)
-        .setLabel('Clear Tag')
+        .setLabel('Clear Mentions')
         .setStyle(ButtonStyle.Danger)
         .setEmoji('🚫')
     );
@@ -91,11 +103,11 @@ export function buildChannelDetailComponents(channelConfig: ChannelConfigEntity)
     .addComponents(
       new ButtonBuilder()
         .setCustomId('channels:back')
-        .setLabel('Back to Channels')
+        .setLabel('⬅️ Back to Channel List')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('⬅️')
+        .setEmoji('📋')
     );
 
-  components.push(toggleRow, tagRow, navRow);
+  components.push(notificationRow, displayRow, tagRow, navRow);
   return components;
 }

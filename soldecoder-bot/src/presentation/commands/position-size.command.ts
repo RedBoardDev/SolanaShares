@@ -55,8 +55,12 @@ export const positionSizeCommand = {
       const getGuildUC = new GetGuildSettingsUseCase(guildRepo);
       const settings = await getGuildUC.execute(interaction.guildId!);
 
-      const defaultWallet = settings?.positionSizeDefaults.walletAddress ?? null;
-      const defaultSl = settings?.positionSizeDefaults.stopLossPercent ?? null;
+      if (!settings) {
+        throw new MissingConfigurationError();
+      }
+
+      const defaultWallet = settings.positionSizeDefaults.walletAddress ?? null;
+      const defaultSl = settings.positionSizeDefaults.stopLossPercent ?? null;
 
       let walletToUse = (walletInput ?? '').trim() || defaultWallet || '';
 

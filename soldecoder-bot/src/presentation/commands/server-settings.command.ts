@@ -1,9 +1,10 @@
 import { SlashCommandBuilder, PermissionFlagsBits, ChatInputCommandInteraction } from 'discord.js';
-import { EnsureGuildExistsUseCase } from '@application/use-cases/ensure-guild-exists.use-case';
+import { GetGuildSettingsUseCase } from '@application/use-cases/get-guild-settings.use-case';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { buildServerSettingsEmbed, buildServerSettingsComponents } from '@presentation/ui/embeds/server-settings.embed';
 import { logger } from '@helpers/logger';
 import { runCommand } from '@presentation/commands/command-runner';
+import { MissingConfigurationError } from '@presentation/commands/command-errors';
 
 export const serverSettingsCommand = {
   data: new SlashCommandBuilder()
@@ -23,10 +24,13 @@ export const serverSettingsCommand = {
       execute: async () => {
         const guildId = interaction.guildId!;
         const guildRepo = new DynamoGuildSettingsRepository();
-        const ensureGuildUC = new EnsureGuildExistsUseCase(guildRepo);
+        const getGuildSettingsUC = new GetGuildSettingsUseCase(guildRepo);
 
-        logger.debug(`Ensuring guild exists: ${guildId}`);
-        const guildSettings = await ensureGuildUC.execute(guildId);
+        const guildSettings = await getGuildSettingsUC.execute(guildId);
+
+        if (!guildSettings) {
+          throw new MissingConfigurationError();
+        }
 
         let globalChannelName: string | undefined;
         if (guildSettings.globalChannelId) {
@@ -35,7 +39,7 @@ export const serverSettingsCommand = {
         }
 
         const embed = buildServerSettingsEmbed(guildSettings, globalChannelName);
-        const components = buildServerSettingsComponents();
+        const components = buildServerSettingsComponents(guildSettings);
 
         await interaction.editReply({
           embeds: [embed],

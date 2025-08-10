@@ -4,9 +4,7 @@ import {
   PermissionFlagsBits,
   ChannelType,
 } from 'discord.js';
-import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
-import { EnsureGuildExistsUseCase } from '@application/use-cases/ensure-guild-exists.use-case';
 import { GetGuildChannelsUseCase } from '@application/use-cases/get-guild-channels.use-case';
 import { buildChannelListEmbed, buildChannelListComponents } from '@presentation/ui/embeds/channel-list.embed';
 import { runCommand } from '@presentation/commands/command-runner';
@@ -28,11 +26,7 @@ export const followedChannelsCommand = {
       fallbackMessage: '❌ An error occurred while retrieving followed channels.',
       execute: async () => {
         const guildId = interaction.guildId!;
-        const guildRepo = new DynamoGuildSettingsRepository();
         const channelRepo = new DynamoChannelConfigRepository();
-
-        const ensureGuildUC = new EnsureGuildExistsUseCase(guildRepo);
-        const guildSettings = await ensureGuildUC.execute(guildId);
 
         const getChannelsUC = new GetGuildChannelsUseCase(channelRepo);
         const channels = await getChannelsUC.execute(guildId);

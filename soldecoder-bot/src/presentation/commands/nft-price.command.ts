@@ -15,7 +15,7 @@ export const nftPriceCommand = {
       interaction,
       rateLimitMs: 1 * 60_000,
       rateLimitKey: 'nft-price',
-      requireGuild: true,
+      requireGuild: false,
       ephemeral: true,
       logLabel: '❌ Error executing NFT price command',
       fallbackMessage: '❌ Failed to load NFT price information.',

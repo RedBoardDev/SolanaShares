@@ -1,10 +1,9 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import { parsePositionStatusMessage } from '@application/parsers/position-status.parser';
 import { buildGlobalPositionEmbed } from '@presentation/ui/embeds/global-position.embed';
 import { logger } from '@helpers/logger';
-import { MissingConfigurationError, InvalidCommandUsageError } from '@presentation/commands/command-errors';
+import { InvalidCommandUsageError } from '@presentation/commands/command-errors';
 import { runCommand } from '@presentation/commands/command-runner';
 
 export const globalPositionsCommand = {
@@ -29,13 +28,7 @@ export const globalPositionsCommand = {
       fallbackMessage: '❌ Failed to load global positions.',
       execute: async () => {
       const guildId = interaction.guildId!;
-      const guildRepo = new DynamoGuildSettingsRepository();
       const channelRepo = new DynamoChannelConfigRepository();
-        const guildSettings = await guildRepo.getByGuildId(guildId);
-
-      if (!guildSettings) {
-        throw new MissingConfigurationError('❌ Guild settings not found.');
-      }
 
         const channels = await channelRepo.getByGuildId(guildId);
       if (channels.length === 0) {

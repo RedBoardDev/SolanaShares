@@ -11,7 +11,7 @@ import { UpdateGuildSettingsUseCase } from '@application/use-cases/update-guild-
 import { GetGuildSettingsUseCase } from '@application/use-cases/get-guild-settings.use-case';
 import { EnsureGuildExistsUseCase } from '@application/use-cases/ensure-guild-exists.use-case';
 import { buildServerSettingsEmbed, buildServerSettingsComponents } from '@presentation/ui/embeds/server-settings.embed';
-import { buildTimezoneSelectComponent, buildChannelSelectComponent, getTimezoneDisplayName } from '@presentation/ui/components/server-select.component';
+import { buildTimezoneSelectComponent, buildChannelSelectComponent } from '@presentation/ui/components/server-select.component';
 import { TimezoneHelper } from '@domain/value-objects/timezone';
 import { logger } from '@helpers/logger';
 
@@ -264,7 +264,7 @@ export class ServerInteractionHandler {
     }
 
     const embed = buildServerSettingsEmbed(guildSettings, globalChannelName);
-    const components = buildServerSettingsComponents();
+    const components = buildServerSettingsComponents(guildSettings);
 
     await interaction.editReply({ embeds: [embed], components });
   }
