@@ -1,16 +1,22 @@
 import { Interaction } from 'discord.js';
 import { ChannelInteractionHandler } from './channel-interaction.handler';
 import { ServerInteractionHandler } from './server-interaction.handler';
+import { SetupInteractionHandler } from './setup-interaction.handler';
+import { GuideInteractionHandler } from './guide-interaction.handler';
 import { logger } from '@helpers/logger';
 
 export class InteractionRouter {
   private static instance: InteractionRouter;
   private channelHandler: ChannelInteractionHandler;
   private serverHandler: ServerInteractionHandler;
+  private setupHandler: SetupInteractionHandler;
+  private guideHandler: GuideInteractionHandler;
 
   private constructor() {
     this.channelHandler = new ChannelInteractionHandler();
     this.serverHandler = new ServerInteractionHandler();
+    this.setupHandler = new SetupInteractionHandler();
+    this.guideHandler = new GuideInteractionHandler();
   }
 
   static getInstance(): InteractionRouter {
@@ -41,6 +47,10 @@ export class InteractionRouter {
         await this.channelHandler.handleInteraction(interaction);
       } else if (customId.startsWith('server:')) {
         await this.serverHandler.handleInteraction(interaction);
+      } else if (customId.startsWith('setup:')) {
+        await this.setupHandler.handleInteraction(interaction);
+      } else if (customId.startsWith('guide:')) {
+        await this.guideHandler.handleInteraction(interaction);
       } else {
         logger.warn(`No handler found for interaction: ${customId}`);
       }
