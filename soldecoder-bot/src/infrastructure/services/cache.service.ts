@@ -10,7 +10,7 @@ interface CacheEntry<T> {
 
 export class CacheService {
   private static instance: CacheService;
-  private readonly TTL_MS = 30 * 60 * 1000;
+  private readonly TTL_MS = 30 * 60_000;
 
   private channelCache = new Map<string, CacheEntry<ChannelConfigEntity>>();
 

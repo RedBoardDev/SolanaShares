@@ -6,7 +6,7 @@ export class CoinGeckoService {
   private static instance: CoinGeckoService;
   private static readonly BASE_URL = 'https://api.coingecko.com/api/v3';
   private static readonly TIMEOUT_MS = 30000;
-  private static readonly CACHE_TTL_MS = 60 * 1000;
+  private static readonly CACHE_TTL_MS = 60_000;
 
   private nftCache = new Map<string, CachedNftData>();
 

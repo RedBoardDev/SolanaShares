@@ -13,7 +13,7 @@ type UsageEntry = {
 export class CommandRateLimiterService {
   private static instance: CommandRateLimiterService;
   private readonly usageMap: Map<CommandKey, Map<UserId, UsageEntry>> = new Map();
-  private readonly SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+  private readonly SWEEP_INTERVAL_MS = 15 * 60_000;
 
   private constructor() {
     setInterval(() => this.cleanup(), this.SWEEP_INTERVAL_MS).unref();

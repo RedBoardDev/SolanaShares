@@ -12,7 +12,7 @@ export class WalletInfoService implements IWalletInfoService {
   private lpAgentService: LpAgentService;
   private cachedWalletInfo: WalletInfo | null = null;
   private lastUpdateTime: number = 0;
-  private readonly CACHE_TTL_MS = 5 * 60 * 1000;
+  private readonly CACHE_TTL_MS = 5 * 60_000;
 
   private constructor() {
     this.lpAgentService = LpAgentService.getInstance();

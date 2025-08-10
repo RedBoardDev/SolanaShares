@@ -9,7 +9,7 @@ export class PositionDisplayScheduler {
   private readonly updateGlobalUC: UpdateGlobalPositionDisplayUseCase;
   private interval: NodeJS.Timeout | null = null;
   private isTicking = false;
-  private readonly INTERVAL_MS = 30 * 1000;
+  private readonly INTERVAL_MS = 30_000;
 
   private constructor() {
     this.guildRepo = new DynamoGuildSettingsRepository();
