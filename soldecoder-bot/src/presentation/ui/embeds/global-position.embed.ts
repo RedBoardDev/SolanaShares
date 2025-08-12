@@ -1,76 +1,94 @@
-import { EmbedBuilder } from 'discord.js';
-import { PositionStatus } from '@schemas/position-status.schema';
+import type { PositionStatus } from "@schemas/position-status.schema";
+import { EmbedBuilder } from "discord.js";
 
 export function buildGlobalPositionEmbed(
-  positionsByWallet: Map<string, PositionStatus[]>,
-  options?: { percentOnly?: boolean; footerText?: string }
+	positionsByWallet: Map<string, PositionStatus[]>,
+	options?: { percentOnly?: boolean; footerText?: string },
 ): EmbedBuilder {
-  const embed = new EmbedBuilder()
-    .setTitle('📊 Position overview')
-    .setColor(0x5865F2)
-    .setTimestamp()
-    .setFooter({ text: options?.footerText ?? 'Updates every 30 seconds' });
+	const embed = new EmbedBuilder()
+		.setTitle("📊 Position overview")
+		.setColor(0x5865f2)
+		.setTimestamp()
+		.setFooter({ text: options?.footerText ?? "Updates every 30 seconds" });
 
-  if (positionsByWallet.size === 0) {
-    embed.setDescription('No active positions found in followed channels.');
-    return embed;
-  }
+	if (positionsByWallet.size === 0) {
+		embed.setDescription("No active positions found in followed channels.");
+		return embed;
+	}
 
-  const percentOnly = options?.percentOnly === true;
-  let totalPositions = 0;
-  let totalPnL = 0;
+	const percentOnly = options?.percentOnly === true;
+	let totalPositions = 0;
+	let totalPnL = 0;
 
-  for (const [walletName, positions] of positionsByWallet) {
-    totalPositions += positions.length;
+	for (const [walletName, positions] of positionsByWallet) {
+		totalPositions += positions.length;
 
-    const walletField = positions.map(pos => {
-        totalPnL += pos.pnl;
-        const icon = getStatusIcon(pos.status);
-        if (percentOnly) {
-          const pctText = `(**${pos.pnlPercentage >= 0 ? '+' : ''}${pos.pnlPercentage.toFixed(2)}%**)`;
-          return `${icon} ${pos.symbolShort} ${pctText}`;
-        }
-        const pnlText = formatPnL(pos.pnl, pos.pnlPercentage);
-        const priceText = `From ${pos.startPrice.toFixed(2)} → ${pos.currentPrice.toFixed(2)}`;
-        const totalFees = pos.unclaimedFees + pos.claimedFees;
-        const feesPercentage = pos.startPrice > 0 ? (totalFees / pos.startPrice) * 100 : 0;
-        const feesText = `Fees: ${totalFees.toFixed(2)} (${feesPercentage.toFixed(2)}%)`;
-        return `${icon} ${pos.symbolShort} ${pnlText}\n└ ${priceText} | ${feesText}`;
-      }).join('\n');
+		const walletField = positions
+			.map((pos) => {
+				totalPnL += pos.pnl;
+				const icon = getStatusIcon(pos.status);
 
-    embed.addFields({
-      name: `👤 ${walletName}`,
-      value: walletField,
-      inline: false
-    });
-  }
+				if (percentOnly) {
+					// Show full view but mask amounts with asterisks
+					const pnlText = formatPnLPercentOnly(pos.pnl, pos.pnlPercentage);
+					const priceText = "From ••• → •••";
+					const totalFees = pos.unclaimedFees + pos.claimedFees;
+					const feesPercentage =
+						pos.startPrice > 0 ? (totalFees / pos.startPrice) * 100 : 0;
+					const feesText = `Fees: ••• (${feesPercentage.toFixed(2)}%)`;
+					return `${icon} ${pos.symbolShort} ${pnlText}\n└ ${priceText} | ${feesText}`;
+				}
 
-  const summaryIcon = totalPnL > 0 ? '🟢' : totalPnL < 0 ? '🔴' : '⚪';
-  const summaryText = percentOnly
-    ? `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? 's' : ''}** | Percent-only view`
-    : `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? 's' : ''}** | Total PnL: **${totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)} SOL**`;
+				const pnlText = formatPnL(pos.pnl, pos.pnlPercentage);
+				const priceText = `From ${pos.startPrice.toFixed(2)} → ${pos.currentPrice.toFixed(2)}`;
+				const totalFees = pos.unclaimedFees + pos.claimedFees;
+				const feesPercentage =
+					pos.startPrice > 0 ? (totalFees / pos.startPrice) * 100 : 0;
+				const feesText = `Fees: ${totalFees.toFixed(2)} (${feesPercentage.toFixed(2)}%)`;
+				return `${icon} ${pos.symbolShort} ${pnlText}\n└ ${priceText} | ${feesText}`;
+			})
+			.join("\n");
 
-  embed.setDescription(summaryText);
+		embed.addFields({
+			name: `👤 ${walletName}`,
+			value: walletField,
+			inline: false,
+		});
+	}
 
-  return embed;
+	const summaryIcon = totalPnL > 0 ? "🟢" : totalPnL < 0 ? "🔴" : "⚪";
+	const summaryText = percentOnly
+		? `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? "s" : ""}** | Amounts hidden`
+		: `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? "s" : ""}** | Total PnL: **${totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)} SOL**`;
+
+	embed.setDescription(summaryText);
+
+	return embed;
 }
 
-function getStatusIcon(status: 'profit' | 'loss' | 'neutral'): string {
-  switch (status) {
-    case 'profit':
-      return '🟢';
-    case 'loss':
-      return '🔴';
-    case 'neutral':
-      return '⚪';
-    default:
-      return '⚪';
-  }
+function getStatusIcon(status: "profit" | "loss" | "neutral"): string {
+	switch (status) {
+		case "profit":
+			return "🟢";
+		case "loss":
+			return "🔴";
+		case "neutral":
+			return "⚪";
+		default:
+			return "⚪";
+	}
 }
 
 function formatPnL(pnl: number, percentage: number): string {
-  const sign = pnl >= 0 ? '+' : '';
-  const pnlText = `${sign}${pnl.toFixed(2)} SOL`;
-  const percentageText = `(**${sign}${percentage.toFixed(2)}%**)`;
-  return `${pnlText} ${percentageText}`;
+	const sign = pnl >= 0 ? "+" : "";
+	const pnlText = `${sign}${pnl.toFixed(2)} SOL`;
+	const percentageText = `(**${sign}${percentage.toFixed(2)}%**)`;
+	return `${pnlText} ${percentageText}`;
+}
+
+function formatPnLPercentOnly(pnl: number, percentage: number): string {
+	const sign = pnl >= 0 ? "+" : "";
+	const pnlText = `${sign}••• SOL`;
+	const percentageText = `(**${sign}${percentage.toFixed(2)}%**)`;
+	return `${pnlText} ${percentageText}`;
 }
