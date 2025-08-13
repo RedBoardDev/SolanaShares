@@ -1,4 +1,4 @@
-import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
+import type { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
 
 export interface GuildSettingsRepository {
   /** Retrieve the settings of a guild */

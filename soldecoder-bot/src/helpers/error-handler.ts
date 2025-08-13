@@ -1,4 +1,4 @@
-import { logger } from "./logger";
+import { logger } from './logger';
 
 export function setupErrorHandler(): void {
   // Bridge console.* to our logger so everything ends up dans nos fichiers datés
@@ -37,7 +37,12 @@ export function setupErrorHandler(): void {
     const code = (warning as any).code;
     // Ignore deprecation of multipleResolves event to reduce noise
     if (code === 'DEP0160') return;
-    logger.warn('Node process warning', { name: warning.name, code, message: warning.message, stack: warning.stack } as any);
+    logger.warn('Node process warning', {
+      name: warning.name,
+      code,
+      message: warning.message,
+      stack: warning.stack,
+    } as any);
   });
 
   process.on('beforeExit', (code: number) => {

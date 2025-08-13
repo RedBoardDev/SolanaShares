@@ -1,5 +1,5 @@
-import { PriceData } from '@schemas/price-data.schema';
-import { SolanaTrackerApiClient } from '@infrastructure/services/api-pricing/solana-tracker-api-client';
+import type { PriceData } from '@schemas/price-data.schema';
+import type { SolanaTrackerApiClient } from '@infrastructure/services/api-pricing/solana-tracker-api-client';
 import { logger } from '@helpers/logger';
 
 export class ApiLoadBalancer {

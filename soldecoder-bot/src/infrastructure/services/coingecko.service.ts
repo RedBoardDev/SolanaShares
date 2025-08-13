@@ -1,6 +1,6 @@
-import { NftData, NftDataSchema, CachedNftData } from '@schemas/nft-data.schema';
+import { type NftData, NftDataSchema, type CachedNftData } from '@schemas/nft-data.schema';
 import { logger } from '@helpers/logger';
-import axios, { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
 export class CoinGeckoService {
   private static instance: CoinGeckoService;

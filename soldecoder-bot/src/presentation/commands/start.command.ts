@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, type ChatInputCommandInteraction } from 'discord.js';
 import { GetGuildSettingsUseCase } from '@application/use-cases/get-guild-settings.use-case';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { SetupSessionService } from '@infrastructure/services/setup-session.service';

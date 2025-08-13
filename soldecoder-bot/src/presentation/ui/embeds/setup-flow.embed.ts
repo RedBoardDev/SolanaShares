@@ -1,5 +1,5 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { SetupSessionData } from '@infrastructure/services/setup-session.service';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import type { SetupSessionData } from '@infrastructure/services/setup-session.service';
 import { buildChannelSelectComponent } from '@presentation/ui/components/channel-select.component';
 import { TimezoneHelper } from '@domain/value-objects/timezone';
 import { buildBotGuideEmbed, buildBotGuideComponents } from '@presentation/ui/embeds/bot-guide.embed';
@@ -148,7 +148,7 @@ export function buildStep2Embed(session: SetupSessionData): EmbedBuilder {
   return embed;
 }
 
-export function buildStep2Components(walletConfigured: boolean = false): ActionRowBuilder<any>[] {
+export function buildStep2Components(walletConfigured = false): ActionRowBuilder<any>[] {
   if (walletConfigured) {
     return [
       new ActionRowBuilder<ButtonBuilder>()

@@ -1,10 +1,10 @@
-import { LpAgentService as ILpAgentService } from '@domain/interfaces/lpagent.service.interface';
-import { LpAgentResponse, LpAgentResponseSchema, LpAgentOverviewResponse, LpAgentOverviewResponseSchema } from '@schemas/lpagent.schema';
-import { z } from 'zod';
+import type { LpAgentService as ILpAgentService } from '@domain/interfaces/lpagent.service.interface';
+import { type LpAgentResponse, LpAgentResponseSchema, type LpAgentOverviewResponse, LpAgentOverviewResponseSchema } from '@schemas/lpagent.schema';
+import type { z } from 'zod';
 import { RateLimiter } from './rate-limiter.service';
 import { config } from '@infrastructure/config/env';
 import { logger } from '@helpers/logger';
-import axios, { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
 export class LpAgentService implements ILpAgentService {
   private static instance: LpAgentService;

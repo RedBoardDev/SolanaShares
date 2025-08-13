@@ -1,5 +1,5 @@
-import { GuildSettingsRepository } from '@domain/interfaces/guild-settings.repository.interface';
-import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
+import type { GuildSettingsRepository } from '@domain/interfaces/guild-settings.repository.interface';
+import type { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
 import { GetGuildSettingsUseCase } from './get-guild-settings.use-case';
 import { InitGuildSettingsUseCase } from './init-guild-settings.use-case';
 import { logger } from '@helpers/logger';

@@ -1,16 +1,16 @@
 import {
-  MeteoraDeposit,
-  MeteoraPosition,
+  type MeteoraDeposit,
+  type MeteoraPosition,
   MeteoraPositionSchema,
   MeteoraDepositSchema,
-  MeteoraClaimReward,
+  type MeteoraClaimReward,
   MeteoraClaimRewardSchema,
-  MeteoraClaimFee,
+  type MeteoraClaimFee,
   MeteoraClaimFeeSchema,
-  MeteoraWithdrawal,
+  type MeteoraWithdrawal,
   MeteoraWithdrawalSchema,
 } from '@schemas/meteora-position.schema';
-import { MeteoraPair, MeteoraPairSchema } from '@schemas/meteora-pair.schema';
+import { type MeteoraPair, MeteoraPairSchema } from '@schemas/meteora-pair.schema';
 import { RateLimiter } from './rate-limiter.service';
 
 export class MeteoraApiService {

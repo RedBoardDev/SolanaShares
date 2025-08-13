@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   TakeProfitTriggerSchema,
   StopLossTriggerSchema,
-  TriggerData
+  type TriggerData
 } from '@schemas/trigger-message.schema';
 
 /**

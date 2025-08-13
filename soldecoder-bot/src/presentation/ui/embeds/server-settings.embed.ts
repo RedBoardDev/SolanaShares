@@ -1,7 +1,7 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
+import type { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
 import { getTimezoneDisplayName } from '@presentation/ui/components/server-select.component';
-import { Timezone } from '@domain/value-objects/timezone';
+import type { Timezone } from '@domain/value-objects/timezone';
 
 export function buildServerSettingsEmbed(guildSettings: GuildSettingsEntity, globalChannelName?: string) {
   const embed = new EmbedBuilder()

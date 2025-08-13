@@ -1,6 +1,6 @@
 import { RateLimiter } from '@infrastructure/services/rate-limiter.service';
 import { SolanaWeb3Service } from '@infrastructure/services/solanaweb3.service';
-import { PositionData } from '@schemas/position-data.schema';
+import type { PositionData } from '@schemas/position-data.schema';
 import { MeteoraApiService } from '@infrastructure/services/meteora.service';
 
 export class PositionFetcher {

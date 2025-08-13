@@ -1,8 +1,7 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, type ChatInputCommandInteraction } from 'discord.js';
 import { GetGuildSettingsUseCase } from '@application/use-cases/get-guild-settings.use-case';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { buildServerSettingsEmbed, buildServerSettingsComponents } from '@presentation/ui/embeds/server-settings.embed';
-import { logger } from '@helpers/logger';
 import { runCommand } from '@presentation/commands/command-runner';
 import { MissingConfigurationError } from '@presentation/commands/command-errors';
 

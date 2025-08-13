@@ -62,9 +62,9 @@ export const positionSizeCommand = {
       const defaultWallet = settings.positionSizeDefaults.walletAddress ?? null;
       const defaultSl = settings.positionSizeDefaults.stopLossPercent ?? null;
 
-      let walletToUse = (walletInput ?? '').trim() || defaultWallet || '';
+      const walletToUse = (walletInput ?? '').trim() || defaultWallet || '';
 
-      const stoploss = stoplossInput ?? (defaultSl !== null ? defaultSl : NaN);
+      const stoploss = stoplossInput ?? (defaultSl !== null ? defaultSl : Number.NaN);
 
       if (!walletToUse) {
         throw new MissingConfigurationError('ℹ️ No default wallet set. Provide `wallet` option or set defaults via `/server-settings → Position Size Defaults`.');

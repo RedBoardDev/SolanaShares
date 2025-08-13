@@ -1,4 +1,4 @@
-import { PriceData } from '@schemas/price-data.schema';
+import type { PriceData } from '@schemas/price-data.schema';
 import { config } from '@infrastructure/config/env';
 import { SolanaTrackerApiClient } from '@infrastructure/services/api-pricing/solana-tracker-api-client';
 import { ApiLoadBalancer } from '@infrastructure/services/api-pricing/api-load-balancer';

@@ -1,12 +1,12 @@
 import {
-  ButtonInteraction,
-  StringSelectMenuInteraction,
-  ChannelSelectMenuInteraction,
-  ModalSubmitInteraction,
+  type ButtonInteraction,
+  type StringSelectMenuInteraction,
+  type ChannelSelectMenuInteraction,
+  type ModalSubmitInteraction,
   PermissionFlagsBits,
   ChannelType
 } from 'discord.js';
-import { SetupSessionService, SetupSessionData } from '@infrastructure/services/setup-session.service';
+import { SetupSessionService, type SetupSessionData } from '@infrastructure/services/setup-session.service';
 import {
   buildStep1Embed, buildStep1Components,
   buildStep2Embed, buildStep2Components, buildWalletStopLossModal,
@@ -15,7 +15,7 @@ import {
   buildStep5Embed, buildStep5Components
 } from '@presentation/ui/embeds/setup-flow.embed';
 import { logger } from '@helpers/logger';
-import { TimezoneHelper, Timezone } from '@domain/value-objects/timezone';
+import { TimezoneHelper, type Timezone } from '@domain/value-objects/timezone';
 import { WalletAddress } from '@domain/value-objects/wallet-address';
 import { InitGuildSettingsUseCase } from '@application/use-cases/init-guild-settings.use-case';
 import { UpdateGuildSettingsUseCase } from '@application/use-cases/update-guild-settings.use-case';
@@ -119,7 +119,7 @@ export class SetupInteractionHandler {
         }
       } else if (customId.startsWith('setup:back:')) {
         if (interaction.isButton()) {
-          await this.handleBack(interaction, session, parseInt(customId.split(':')[2]));
+          await this.handleBack(interaction, session, Number.parseInt(customId.split(':')[2]));
         }
       } else {
         logger.warn(`Unknown setup interaction: ${customId}`);
@@ -196,7 +196,7 @@ export class SetupInteractionHandler {
 
       let stopLossPercent: number | undefined = undefined;
       if (stopLossInput) {
-        const parsed = parseFloat(stopLossInput);
+        const parsed = Number.parseFloat(stopLossInput);
         if (isNaN(parsed) || parsed <= 0 || parsed > 100) {
           await interaction.editReply({
             content: '❌ Stop loss must be a number between 0 and 100.'

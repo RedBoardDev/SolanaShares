@@ -1,5 +1,5 @@
-import { WalletInfoService as IWalletInfoService } from '@domain/interfaces/wallet-info.service.interface';
-import { WalletInfo, WalletPosition, WalletInfoSchema, WalletPositionSchema } from '@schemas/lpagent.schema';
+import type { WalletInfoService as IWalletInfoService } from '@domain/interfaces/wallet-info.service.interface';
+import { type WalletInfo, type WalletPosition, WalletInfoSchema, WalletPositionSchema } from '@schemas/lpagent.schema';
 import { LpAgentService } from './lpagent.service';
 import { config } from '@infrastructure/config/env';
 import { logger } from '@helpers/logger';
@@ -11,7 +11,7 @@ export class WalletInfoService implements IWalletInfoService {
 
   private lpAgentService: LpAgentService;
   private cachedWalletInfo: WalletInfo | null = null;
-  private lastUpdateTime: number = 0;
+  private lastUpdateTime = 0;
   private readonly CACHE_TTL_MS = 5 * 60_000;
 
   private constructor() {

@@ -2,7 +2,7 @@ import DynamoService from '@infrastructure/services/dynamo.service';
 import { CacheService } from '@infrastructure/services/cache.service';
 import { config } from '@infrastructure/config/env';
 import { logger } from '@helpers/logger';
-import { GlobalPositionMessage } from '@schemas/position-status.schema';
+import type { GlobalPositionMessage } from '@schemas/position-status.schema';
 
 interface DynamoGlobalMessageItem {
   PK: string;        // GUILD#{guildId}

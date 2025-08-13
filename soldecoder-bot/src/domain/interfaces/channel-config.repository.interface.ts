@@ -1,4 +1,4 @@
-import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 
 export interface ChannelConfigRepository {
   /** Retrieve the configuration of a channel */

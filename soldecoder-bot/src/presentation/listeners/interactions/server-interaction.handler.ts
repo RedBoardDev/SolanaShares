@@ -1,10 +1,9 @@
 import {
-  ButtonInteraction,
-  StringSelectMenuInteraction,
-  ChannelSelectMenuInteraction,
+  type ButtonInteraction,
+  type StringSelectMenuInteraction,
+  type ChannelSelectMenuInteraction,
   PermissionFlagsBits,
-  ChannelType,
-  ModalSubmitInteraction,
+  type ModalSubmitInteraction,
 } from 'discord.js';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { UpdateGuildSettingsUseCase } from '@application/use-cases/update-guild-settings.use-case';

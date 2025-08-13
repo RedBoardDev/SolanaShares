@@ -1,5 +1,5 @@
-import { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
-import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import type { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
+import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 import { logger } from '@helpers/logger';
 
 export class GetGuildChannelsUseCase {

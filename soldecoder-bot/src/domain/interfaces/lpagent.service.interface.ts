@@ -1,4 +1,4 @@
-import { LpAgentResponse, LpAgentOverviewResponse } from '@schemas/lpagent.schema';
+import type { LpAgentResponse, LpAgentOverviewResponse } from '@schemas/lpagent.schema';
 
 export interface LpAgentService {
   /** Fetch opening LP positions from LpAgent API */

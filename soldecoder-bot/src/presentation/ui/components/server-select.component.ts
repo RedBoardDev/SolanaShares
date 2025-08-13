@@ -1,5 +1,5 @@
-import { ActionRowBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType } from 'discord.js';
-import { COMMON_TIMEZONES, Timezone, TimezoneOption, TimezoneHelper } from '@domain/value-objects/timezone';
+import { ActionRowBuilder, StringSelectMenuBuilder, } from 'discord.js';
+import { COMMON_TIMEZONES, type Timezone, TimezoneHelper } from '@domain/value-objects/timezone';
 import { buildServerChannelSelectComponent } from './channel-select.component';
 
 export function buildTimezoneSelectComponent() {

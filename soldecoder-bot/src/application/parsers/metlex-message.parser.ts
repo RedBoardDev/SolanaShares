@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import {
   MetlexPnLMessageSchema,
-  MetlexLink,
-  MetlexPnLMessage
+  type MetlexLink,
+  type MetlexPnLMessage
 } from '@schemas/metlex.schema';
 
 /**

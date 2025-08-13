@@ -1,4 +1,4 @@
-import { ButtonInteraction } from 'discord.js';
+import type { ButtonInteraction } from 'discord.js';
 import { buildServerSettingsEmbed, buildServerSettingsComponents } from '@presentation/ui/embeds/server-settings.embed';
 import { buildChannelListEmbed, buildChannelListComponents } from '@presentation/ui/embeds/channel-list.embed';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';

@@ -1,4 +1,4 @@
-import { Interaction } from 'discord.js';
+import type { Interaction } from 'discord.js';
 import { ChannelInteractionHandler } from './channel-interaction.handler';
 import { ServerInteractionHandler } from './server-interaction.handler';
 import { SetupInteractionHandler } from './setup-interaction.handler';

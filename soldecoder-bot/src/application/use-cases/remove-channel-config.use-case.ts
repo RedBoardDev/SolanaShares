@@ -1,4 +1,4 @@
-import { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
+import type { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
 import { logger } from '@helpers/logger';
 
 export class RemoveChannelConfigUseCase {

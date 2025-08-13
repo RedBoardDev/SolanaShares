@@ -1,4 +1,4 @@
-import { WalletInfo, WalletPosition } from '@schemas/lpagent.schema';
+import type { WalletInfo, WalletPosition } from '@schemas/lpagent.schema';
 
 export interface WalletInfoService {
   /** Get SOL balance for the configured wallet */

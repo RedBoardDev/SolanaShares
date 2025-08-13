@@ -1,5 +1,5 @@
 import { logger } from '@helpers/logger';
-import { Timezone } from '@domain/value-objects/timezone';
+import type { Timezone } from '@domain/value-objects/timezone';
 
 export interface SetupSessionData {
   guildId: string;

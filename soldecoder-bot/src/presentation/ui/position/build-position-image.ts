@@ -1,6 +1,6 @@
 import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
 import { selectBackgroundPNLCard, formatValue, type ValueFormat } from '@presentation/ui/position/select-background-image';
-import { FinalPositionData } from '@schemas/final-position.schema';
+import type { FinalPositionData } from '@schemas/final-position.schema';
 import type { TriggerData } from '@schemas/trigger-message.schema';
 
 GlobalFonts.registerFromPath('assets/fonts/VarelaRound-Regular.ttf', 'Varela Round');

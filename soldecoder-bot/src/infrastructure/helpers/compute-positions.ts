@@ -1,5 +1,5 @@
-import { PositionData } from '@schemas/position-data.schema';
-import { FinalPositionData, Amount, TokenBreakdown } from '@schemas/final-position.schema';
+import type { PositionData } from '@schemas/position-data.schema';
+import type { FinalPositionData, Amount, TokenBreakdown } from '@schemas/final-position.schema';
 import { SolanaTrackerPricingService } from '@infrastructure/services/api-pricing/solana-tracker-pricing.service';
 import { logger } from '@helpers/logger';
 

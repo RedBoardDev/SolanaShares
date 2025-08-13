@@ -1,6 +1,6 @@
-import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
-import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
-import { GlobalPositionMessage } from '@schemas/position-status.schema';
+import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import type { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
+import type { GlobalPositionMessage } from '@schemas/position-status.schema';
 import { logger } from '@helpers/logger';
 
 interface CacheEntry<T> {

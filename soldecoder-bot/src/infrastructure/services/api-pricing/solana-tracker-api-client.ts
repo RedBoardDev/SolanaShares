@@ -1,4 +1,4 @@
-import { PriceData, PriceDataSchema, CurrentPriceData, CurrentPriceDataSchema } from '@schemas/price-data.schema';
+import { type PriceData, PriceDataSchema, CurrentPriceDataSchema } from '@schemas/price-data.schema';
 import { RateLimiter } from '@infrastructure/services/rate-limiter.service';
 import { logger } from '@helpers/logger';
 

@@ -2,7 +2,7 @@ import DynamoService from '@infrastructure/services/dynamo.service';
 import { CacheService } from '@infrastructure/services/cache.service';
 import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
-import { GlobalPositionMessage } from '@schemas/position-status.schema';
+import type { GlobalPositionMessage } from '@schemas/position-status.schema';
 import { config } from '@infrastructure/config/env';
 import { logger } from '@helpers/logger';
 

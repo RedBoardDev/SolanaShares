@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { NftData } from '@schemas/nft-data.schema';
+import type { NftData } from '@schemas/nft-data.schema';
 
 export function buildNftPriceEmbed(nftData: NftData, lastUpdated: string): EmbedBuilder {
   const embed = new EmbedBuilder()

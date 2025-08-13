@@ -36,8 +36,7 @@ export async function safePin(message: Message, maxPins = 50): Promise<void> {
           await sysMsg.delete();
         }
       }
-    } catch (_err) {
-    }
+    } catch (_err) {}
   } catch (error) {
     if (error instanceof DiscordAPIError && error.code === 50013) {
       channel.send('❌ **Error**: Missing permission: Manage Messages (required to pin messages)');

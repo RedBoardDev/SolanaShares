@@ -1,4 +1,4 @@
-import { FinalPositionData } from '@schemas/final-position.schema';
+import type { FinalPositionData } from '@schemas/final-position.schema';
 import type { TriggerData } from '@schemas/trigger-message.schema';
 
 /**

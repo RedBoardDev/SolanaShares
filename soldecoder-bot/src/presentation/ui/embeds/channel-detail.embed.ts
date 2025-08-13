@@ -1,5 +1,5 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, } from 'discord.js';
+import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 
 export function buildChannelDetailEmbed(channelConfig: ChannelConfigEntity, channelName: string, tagDisplayName?: string) {
   const embed = new EmbedBuilder()

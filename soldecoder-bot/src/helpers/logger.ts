@@ -86,7 +86,7 @@ class Logger {
       // Terminal
       const out = this.colorize ? chalk.gray(formatted) : formatted;
       try {
-        process.stdout.write(out + '\n');
+        process.stdout.write(`${out}\n`);
       } catch {
         // ignore terminal write errors
       }
@@ -95,12 +95,20 @@ class Logger {
     }
   }
 
-  info(message: string, metadata?: Record<string, unknown>, p0?: { channelsLoaded: number; guildSettingsLoaded: number; cacheStats: { channels: number; guilds: number; guildSettings: number; }; }): void {
+  info(
+    message: string,
+    metadata?: Record<string, unknown>,
+    p0?: {
+      channelsLoaded: number;
+      guildSettingsLoaded: number;
+      cacheStats: { channels: number; guilds: number; guildSettings: number };
+    },
+  ): void {
     if (this.level <= LogLevel.INFO) {
       const formatted = this.formatMessage('INFO', message, metadata);
       const out = this.colorize ? chalk.blue(formatted) : formatted;
       try {
-        process.stdout.write(out + '\n');
+        process.stdout.write(`${out}\n`);
       } catch {
         // ignore terminal write errors
       }
@@ -113,7 +121,7 @@ class Logger {
       const formatted = this.formatMessage('WARN', message, metadata);
       const out = this.colorize ? chalk.yellow(formatted) : formatted;
       try {
-        process.stderr.write(out + '\n');
+        process.stderr.write(`${out}\n`);
       } catch {
         // ignore terminal write errors
       }
@@ -127,7 +135,7 @@ class Logger {
       const formatted = this.formatMessage('ERROR', message, combined);
       const out = this.colorize ? chalk.red(formatted) : formatted;
       try {
-        process.stderr.write(out + '\n');
+        process.stderr.write(`${out}\n`);
       } catch {
         // ignore terminal write errors
       }
@@ -141,7 +149,7 @@ class Logger {
       const formatted = this.formatMessage('FATAL', message, combined);
       const out = this.colorize ? chalk.bgRed.white(formatted) : formatted;
       try {
-        process.stderr.write(out + '\n');
+        process.stderr.write(`${out}\n`);
       } catch {
         // ignore terminal write errors
       }

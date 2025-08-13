@@ -6,15 +6,15 @@ import { parseMetlexMessage } from '@application/parsers/metlex-message.parser';
 import { PositionFetcher } from '@infrastructure/services/position-fetcher.service';
 import { aggregatePositions, computePositions } from '@infrastructure/helpers/compute-positions';
 import { getPreviousMessage } from '@infrastructure/helpers/get-previous-message';
-import { FinalPositionData } from '@schemas/final-position.schema';
-import { TriggerData } from '@schemas/trigger-message.schema';
+import type { FinalPositionData } from '@schemas/final-position.schema';
+import type { TriggerData } from '@schemas/trigger-message.schema';
 import { parseTriggerMessage } from '@application/parsers/trigger-message.parser';
 import { safePin } from '@helpers/safe-pin';
 import { buildPositionImage } from '@presentation/ui/position/build-position-image';
 import { buildPositionMessage } from '@presentation/ui/position/build-position-message';
 import { buildTriggeredMessage } from '@presentation/ui/position/build-triggered-message';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
-import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 
 interface PreparedContent {

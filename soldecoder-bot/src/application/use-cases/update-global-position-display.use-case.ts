@@ -1,11 +1,11 @@
-import type { Client, TextChannel, Collection, Message } from 'discord.js';
+import type { Client, TextChannel, } from 'discord.js';
 import { ChannelType } from 'discord-api-types/v10';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import { DynamoGlobalMessageRepository } from '@infrastructure/repositories/dynamo-global-message.repository';
 import { parsePositionStatusMessage } from '@application/parsers/position-status.parser';
 import { buildGlobalPositionEmbed } from '@presentation/ui/embeds/global-position.embed';
-import { PositionStatus } from '@schemas/position-status.schema';
+import type { PositionStatus } from '@schemas/position-status.schema';
 import { logger } from '@helpers/logger';
 
 export class UpdateGlobalPositionDisplayUseCase {

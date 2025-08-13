@@ -1,10 +1,10 @@
 import {
-  ButtonInteraction,
-  StringSelectMenuInteraction,
-  ChannelSelectMenuInteraction,
-  ModalSubmitInteraction,
-  UserSelectMenuInteraction,
-  RoleSelectMenuInteraction,
+  type ButtonInteraction,
+  type StringSelectMenuInteraction,
+  type ChannelSelectMenuInteraction,
+  type ModalSubmitInteraction,
+  type UserSelectMenuInteraction,
+  type RoleSelectMenuInteraction,
   ChannelType,
   PermissionFlagsBits,
 } from 'discord.js';

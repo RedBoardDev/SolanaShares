@@ -24,7 +24,7 @@ export function buildThresholdModal(channelId: string, currentThreshold: number)
 export function validateThreshold(input: string): { isValid: boolean; value?: number; error?: string } {
   const trimmed = input.trim();
 
-  const num = parseFloat(trimmed);
+  const num = Number.parseFloat(trimmed);
   if (isNaN(num)) {
     return { isValid: false, error: 'Please enter a valid number' };
   }

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { CoinGeckoService } from '@infrastructure/services/coingecko.service';
 import { buildNftPriceEmbed } from '@presentation/ui/embeds/nft-price.embed';
 import { logger } from '@helpers/logger';

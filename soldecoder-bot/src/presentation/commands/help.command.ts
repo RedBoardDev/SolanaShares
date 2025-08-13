@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { type ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { runCommand } from '@presentation/commands/command-runner';
 import { buildBotGuideEmbed } from '@presentation/ui/embeds/bot-guide.embed';
 

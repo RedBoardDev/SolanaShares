@@ -1,4 +1,4 @@
-import { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
+import type { ChannelConfigRepository } from '@domain/interfaces/channel-config.repository.interface';
 import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 import DynamoService from '@infrastructure/services/dynamo.service';
 import { CacheService } from '@infrastructure/services/cache.service';

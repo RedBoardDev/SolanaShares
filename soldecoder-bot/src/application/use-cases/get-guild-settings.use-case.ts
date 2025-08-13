@@ -1,5 +1,5 @@
-import { GuildSettingsRepository } from '@domain/interfaces/guild-settings.repository.interface';
-import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
+import type { GuildSettingsRepository } from '@domain/interfaces/guild-settings.repository.interface';
+import type { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
 import { logger } from '@helpers/logger';
 
 export class GetGuildSettingsUseCase {

@@ -1,4 +1,4 @@
-import { PositionStatus } from '@schemas/position-status.schema';
+import type { PositionStatus } from '@schemas/position-status.schema';
 import { logger } from '@helpers/logger';
 
 /**
@@ -48,13 +48,13 @@ export function parsePositionStatusMessage(content: string): PositionStatus | nu
     const wallet = walletMatch[2].trim();
 
     const claimedFeesMatch = remainingContent.match(claimedFeesPattern);
-    const claimedFees = claimedFeesMatch ? parseFloat(claimedFeesMatch[1]) : 0;
+    const claimedFees = claimedFeesMatch ? Number.parseFloat(claimedFeesMatch[1]) : 0;
 
-    const pnl = parseFloat(pnlStr);
-    const pnlPercentage = parseFloat(pnlPercentageStr);
-    const startPrice = parseFloat(startPriceStr);
-    const currentPrice = parseFloat(currentPriceStr);
-    const unclaimedFees = parseFloat(unclaimedFeesStr);
+    const pnl = Number.parseFloat(pnlStr);
+    const pnlPercentage = Number.parseFloat(pnlPercentageStr);
+    const startPrice = Number.parseFloat(startPriceStr);
+    const currentPrice = Number.parseFloat(currentPriceStr);
+    const unclaimedFees = Number.parseFloat(unclaimedFeesStr);
 
     let status: 'profit' | 'loss' | 'neutral';
     if (pnlPercentage > 0) {
