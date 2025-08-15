@@ -1,0 +1,56 @@
+import type { TextChannel, Message } from 'discord.js';
+import { DiscordAPIError } from 'discord.js';
+
+/**
+ * Pin a message in a channel, ensuring we never exceed Discord's 50-pin limit.
+ * If already at limit, it unpins the oldest message first.
+ * Then it removes the "pinned a message to this channel" system notification.
+ *
+ * @throws {Error} With specific permission error message if pinning fails
+ */
+export async function safePin(message: Message, maxPins = 50): Promise<void> {
+  const channel = message.channel as TextChannel;
+
+  if (channel.type !== 0) {
+    try {
+      await message.pin();
+    } catch (error) {
+      if (error instanceof DiscordAPIError && error.code === 50013) {
+        channel.send('❌ **Error**: Missing permission: Manage Messages (required to pin messages)');
+        throw new Error('Missing permission: Manage Messages (required to pin messages)');
+      }
+      throw error;
+    }
+    return;
+  }
+
+  try {
+    const pinned = await channel.messages.fetchPinned();
+
+    if (pinned.size >= maxPins) {
+      const oldest = pinned.sort((a, b) => a.createdTimestamp - b.createdTimestamp).first();
+      if (oldest) {
+        await oldest.unpin();
+      }
+    }
+
+    await message.pin();
+
+    // Clean up system notification
+    try {
+      const recent = await channel.messages.fetch({ limit: 5 });
+      for (const sysMsg of recent.values()) {
+        if (sysMsg.type === 6 && sysMsg.reference?.messageId === message.id) {
+          await sysMsg.delete();
+        }
+      }
+    } catch (_err) {
+    }
+  } catch (error) {
+    if (error instanceof DiscordAPIError && error.code === 50013) {
+      channel.send('❌ **Error**: Missing permission: Manage Messages (required to pin messages)');
+      throw new Error('Missing permission: Manage Messages (required to pin messages)');
+    }
+    throw error;
+  }
+}
