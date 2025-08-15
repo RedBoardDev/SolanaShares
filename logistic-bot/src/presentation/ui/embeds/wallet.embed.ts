@@ -84,9 +84,33 @@ function buildPoolSection(
   totalNetWorth?: number
 ): { name: string; value: string; inline?: boolean } {
   let value = `Total Pool: **${totalInvested.toFixed(4)} SOL**\nActive Investors: **${activeParticipants}**`;
+
   if (totalNetWorth !== undefined) {
     value += `\nTotal Net Worth: **${totalNetWorth.toFixed(4)} SOL**`;
+
+    // Calculate daily average gain percentage
+    try {
+      const startDate = new Date(config.solana.phase.startDate);
+      const now = new Date();
+      const daysSinceStart = Math.max(1, (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (totalInvested > 0) {
+        const totalGain = totalNetWorth - totalInvested;
+        const dailyGainPercentage = (totalGain / totalInvested / daysSinceStart) * 100;
+
+        if (dailyGainPercentage > 0) {
+          value += `\nDaily ROI: **+${dailyGainPercentage.toFixed(2)}%**`;
+        } else if (dailyGainPercentage < 0) {
+          value += `\nDaily ROI: **-${Math.abs(dailyGainPercentage).toFixed(2)}%**`;
+        } else {
+          value += `\nDaily ROI: **0.00%**`;
+        }
+      }
+    } catch (error) {
+      // Silently ignore if date calculation fails
+    }
   }
+
   return { name: '🌐 Pool', value, inline: false };
 }
 
@@ -104,7 +128,7 @@ export function generateWalletEmbed(data: WalletDisplayData): EmbedBuilder {
   const minSolAmount = Number.parseFloat(config.solana.phase.farmer.minSolAmount);
   const isActive = participant.investedAmount >= minSolAmount;
   const statusEmoji = isActive ? '🟢' : '🔴';
-  const statusText = isActive ? 'Active Investor' : 'Registered (Below Minimum)';
+  const statusText = isActive ? 'Active investor' : `Registered (below minimum of ${minSolAmount.toFixed(4)} SOL)`;
 
   const embed = new EmbedBuilder()
     .setColor(isActive ? 0x00ff00 : 0x9945ff)
@@ -129,7 +153,7 @@ export function generateWalletEmbed(data: WalletDisplayData): EmbedBuilder {
 
   embed
     .setFooter({
-      text: `${isActive ? '💎' : '⚠️'} ${isActive ? 'Active Investor' : 'Below minimum threshold'} • ${SyncStatusEmbed.getNextSyncInfo()}`,
+      text: SyncStatusEmbed.getNextSyncInfo(),
     })
     .setTimestamp();
 
@@ -174,7 +198,7 @@ export function generateInsufficientInvestmentEmbed(currentAmount: number, minRe
       { name: '📊 Remaining', value: `**${Math.max(0, minRequired - currentAmount).toFixed(4)} SOL**`, inline: true },
     )
     .setFooter({
-      text: `💎 Send more SOL to become an active investor • ${SyncStatusEmbed.getNextSyncInfo()}`
+      text: `Send more SOL to become an active investor • ${SyncStatusEmbed.getNextSyncInfo()}`
     })
     .setTimestamp();
 }
