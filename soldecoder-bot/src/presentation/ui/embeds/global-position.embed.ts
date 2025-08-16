@@ -57,9 +57,16 @@ export function buildGlobalPositionEmbed(
 	}
 
 	const summaryIcon = totalPnL > 0 ? "🟢" : totalPnL < 0 ? "🔴" : "⚪";
-	const summaryText = percentOnly
-		? `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? "s" : ""}** | Amounts hidden`
-		: `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? "s" : ""}** | Total PnL: **${totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)} SOL**`;
+	const positionsLine = `${summaryIcon} **${totalPositions} position${totalPositions !== 1 ? "s" : ""}**`;
+
+	const avgPnL = totalPositions > 0 ? totalPnL / totalPositions : 0;
+	const totalPnLSign = totalPnL >= 0 ? "+" : "";
+	const avgPnLSign = avgPnL >= 0 ? "+" : "";
+
+	const solAmount = percentOnly ? `•••` : `${totalPnL.toFixed(2)}`;
+	const pnlLine = `└ Total PnL: ${totalPnLSign}${solAmount} SOL (**${avgPnLSign}${avgPnL.toFixed(2)}%**)`;
+
+	const summaryText = `${positionsLine}\n${pnlLine}`;
 
 	embed.setDescription(summaryText);
 
