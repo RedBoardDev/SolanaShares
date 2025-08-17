@@ -116,7 +116,7 @@ async function main() {
 
     await registerSlashCommands(client.user!.id, config.discordToken);
 
-    PositionDisplayScheduler.getInstance().start(client);
+    // PositionDisplayScheduler.getInstance().start(client);
   });
 
   wireInteractionHandler(client);

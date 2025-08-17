@@ -13,7 +13,7 @@ export const helpCommand = {
       rateLimitMs: 30 * 1000,
       rateLimitKey: 'help',
       requireGuild: false,
-      ephemeral: false,
+      ephemeral: true,
       logLabel: 'Help command failed to execute',
       fallbackMessage: '❌ An error occurred while displaying the guide.',
       execute: async () => {

@@ -33,7 +33,6 @@ export const startCommand = {
         const guildRepo = new DynamoGuildSettingsRepository();
         const getGuildSettingsUC = new GetGuildSettingsUseCase(guildRepo);
 
-        logger.debug(`Checking if guild ${guildId} already exists`);
         const existingSettings = await getGuildSettingsUC.execute(guildId);
 
         if (existingSettings) {
