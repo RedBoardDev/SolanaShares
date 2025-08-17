@@ -1,0 +1,188 @@
+---
+description: Clean Architecture patterns and dependency rules for Discord bot
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Clean Architecture & Dependency Rules
+
+Enforce Clean Architecture principles with proper layer separation and dependency injection patterns.
+
+## 📁 Layer Structure
+
+### Domain Layer (`src/domain/`)
+- **[entities/](mdc:src/domain/entities/)**: Core business entities with validation
+- **[interfaces/](mdc:src/domain/interfaces/)**: Abstract contracts for external dependencies
+- **[value-objects/](mdc:src/domain/value-objects/)**: Immutable business value objects
+
+### Application Layer (`src/application/`)
+- **[use-cases/](mdc:src/application/use-cases/)**: Business logic orchestration
+- **[errors/](mdc:src/application/errors/)**: Custom application errors extending [BaseApplicationError](mdc:src/application/errors/base.error.ts)
+
+### Infrastructure Layer (`src/infrastructure/`)
+- **[repositories/](mdc:src/infrastructure/repositories/)**: Database implementations of domain interfaces
+- **[services/](mdc:src/infrastructure/services/)**: External API clients and technical services
+
+### Presentation Layer (`src/presentation/`)
+- **[commands/](mdc:src/presentation/commands/)**: Discord slash commands with [command-runner.ts](mdc:src/presentation/commands/command-runner.ts)
+- **[listeners/](mdc:src/presentation/listeners/)**: Discord event handlers and interaction managers
+- **[ui/](mdc:src/presentation/ui/)**: Discord UI components (embeds, modals, components)
+
+## 🚫 Dependency Rules (STRICT)
+
+### ❌ FORBIDDEN Imports:
+```typescript
+// Domain CANNOT import Application/Infrastructure/Presentation
+// src/domain/ files CANNOT import from src/application/, src/infrastructure/, src/presentation/
+
+// Application CANNOT import Infrastructure/Presentation
+// src/application/ files CANNOT import from src/infrastructure/, src/presentation/
+
+// Infrastructure CANNOT import Presentation
+// src/infrastructure/ files CANNOT import from src/presentation/
+```
+
+### ✅ ALLOWED Imports:
+```typescript
+// Presentation → Infrastructure → Application → Domain
+// Each layer can import from layers below it
+
+// Examples:
+import { SomeEntity } from '@domain/entities/some.entity';           // ✅ Any layer → Domain
+import { SomeUseCase } from '@application/use-cases/some.use-case';  // ✅ Infrastructure/Presentation → Application
+import { SomeService } from '@infrastructure/services/some.service'; // ✅ Presentation → Infrastructure
+```
+
+## 🏗️ Implementation Patterns
+
+### Use Case Pattern (Application Layer)
+```typescript
+export class SomeUseCase {
+  constructor(
+    private readonly repository: SomeRepository,    // Domain interface
+    private readonly service: SomeService          // Domain interface
+  ) {}
+
+  async execute(input: SomeInput): Promise<SomeOutput> {
+    // 1. Validate input
+    // 2. Load entities via repository
+    // 3. Apply business logic
+    // 4. Save changes via repository
+    // 5. Return result
+  }
+}
+```
+
+### Repository Pattern (Infrastructure → Domain)
+```typescript
+// Domain interface
+export interface ChannelConfigRepository {
+  getByChannelId(channelId: string): Promise<ChannelConfigEntity | null>;
+  save(entity: ChannelConfigEntity): Promise<void>;
+}
+
+// Infrastructure implementation
+export class DynamoChannelConfigRepository implements ChannelConfigRepository {
+  // Implementation details
+}
+```
+
+### Entity Factory Pattern
+```typescript
+export class SomeEntity {
+  private constructor(/* private properties */) {}
+
+  static create(data: SomeData): SomeEntity {
+    // Validation logic
+    return new SomeEntity(/* validated data */);
+  }
+
+  static createDefault(id: string): SomeEntity {
+    // Default values
+    return new SomeEntity(/* defaults */);
+  }
+}
+```
+
+## 📦 Path Mapping Usage
+
+Always use path aliases defined in [tsconfig.json](mdc:tsconfig.json):
+
+```typescript
+// ✅ Correct imports
+import { SomeEntity } from '@domain/entities/some.entity';
+import { SomeUseCase } from '@application/use-cases/some.use-case';
+import { SomeRepository } from '@infrastructure/repositories/some.repository';
+import { logger } from '@helpers/logger';
+
+// ❌ Wrong - relative paths
+import { SomeEntity } from '../../../domain/entities/some.entity';
+```
+
+## 🎯 Dependency Injection Rules
+
+### Constructor Injection (MANDATORY)
+```typescript
+export class InteractionHandler {
+  constructor(
+    private readonly useCase: SomeUseCase,           // Inject use cases
+    private readonly service: SomeService,          // Inject services
+    private readonly validator: PermissionValidator // Inject validators
+  ) {}
+}
+```
+
+### Service Instantiation (Infrastructure Layer Only)
+```typescript
+// ✅ In presentation layer constructors
+export class SomeHandler {
+  constructor() {
+    const repository = new DynamoRepository();      // Infrastructure
+    this.useCase = new SomeUseCase(repository);     // Application
+  }
+}
+
+// ❌ Never instantiate in use cases or domain
+```
+
+## 🔄 Message Processing Architecture
+
+Follow the established pattern from [message-dispatcher.service.ts](mdc:src/infrastructure/services/message-dispatcher.service.ts):
+
+1. **Message Rules**: Implement [MessageRule](mdc:src/domain/interfaces/message-rule.interface.ts) interface
+2. **Rule Registration**: Register in message dispatcher
+3. **Sequential Processing**: Rules execute in registration order
+4. **Early Exit**: Use `exclusive: true` to stop rule chain
+
+## 📊 Cache & Performance
+
+### Cache Pattern (Critical for Performance)
+```typescript
+// Follow patterns from cache.service.ts and DATABASE.md
+// - Cache ALL data in memory at startup
+// - ZERO database queries during message processing
+// - Update cache immediately after database writes
+// - Use Map<string, T> for O(1) lookups
+```
+
+### Use Case Performance Rules
+```typescript
+// ✅ Cache-first pattern
+const config = this.cache.getChannelConfig(channelId);
+if (!config) return; // No database fallback in hot path
+
+// ❌ Database queries in message processing
+const config = await this.repository.getByChannelId(channelId); // FORBIDDEN in hot path
+```
+
+## 🧪 Testing Conventions
+
+```typescript
+// Follow existing patterns:
+// - Unit tests for use cases with mocked dependencies
+// - Integration tests for repositories
+// - Mock all external dependencies (Discord, AWS, APIs)
+// - Test error scenarios and validation logic
+```
+
+This architecture ensures maintainable, testable, and performant code while maintaining clear separation of concerns.

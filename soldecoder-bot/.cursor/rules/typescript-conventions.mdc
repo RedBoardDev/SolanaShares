@@ -1,0 +1,400 @@
+---
+description: TypeScript coding standards and conventions for consistent codebase quality
+globs: src/**/*.ts
+alwaysApply: true
+---
+
+# TypeScript Conventions & Standards
+
+Enforce consistent TypeScript patterns, naming conventions, and code quality standards.
+
+## 📝 Naming Conventions
+
+### Files & Directories
+```typescript
+// Files: kebab-case with descriptive suffixes
+some-entity.entity.ts          // Domain entities
+some-repository.interface.ts   // Domain interfaces
+dynamo-some.repository.ts     // Infrastructure implementations
+some-interaction.handler.ts   // Presentation handlers
+some.service.ts              // Services
+some.use-case.ts            // Use cases
+
+// Directories: kebab-case
+channel-config/
+message-create/
+setup-account/
+```
+
+### Classes & Interfaces
+```typescript
+// PascalCase for all types
+export class ChannelConfigEntity { }
+export interface ChannelConfigRepository { }
+export class DynamoChannelConfigRepository implements ChannelConfigRepository { }
+
+// Use descriptive suffixes
+SomeEntity        // Domain entities
+SomeRepository    // Repository interfaces
+SomeService       // Service implementations
+SomeUseCase       // Application use cases
+SomeHandler       // Interaction handlers
+SomeError         // Custom errors
+```
+
+### Variables & Functions
+```typescript
+// camelCase for variables and functions
+const channelConfig = getChannelConfig();
+const isConfigValid = validateChannelConfig(config);
+
+// Boolean variables with descriptive prefixes
+const isEnabled = config.enabled;
+const hasPermission = checkPermission();
+const canProcessMessage = isEnabled && hasPermission;
+const shouldNotify = config.notifyOnClose;
+```
+
+### Constants
+```typescript
+// SCREAMING_SNAKE_CASE for constants
+const MAX_RETRY_ATTEMPTS = 3;
+const DEFAULT_TIMEOUT_MS = 5000;
+const API_ENDPOINTS = {
+  SOLANA_TRACKER: 'https://api.solanatracker.io',
+  COINGECKO: 'https://api.coingecko.com'
+} as const;
+```
+
+## 🎯 Type Definitions
+
+### Prefer Specific Types Over Generic
+```typescript
+// ✅ Specific types
+type ChannelId = string;
+type GuildId = string;
+type UserId = string;
+type InteractionCustomId = string;
+
+// ✅ Union types for known values
+type TagType = 'USER' | 'ROLE';
+type PermissionType = 'View Channel' | 'Send Messages' | 'Manage Messages';
+
+// ❌ Avoid generic types where specifics are known
+type SomeId = string; // Too generic
+type SomeType = any;  // Never use any
+```
+
+### Interface vs Type Aliases
+```typescript
+// ✅ Use interfaces for object shapes (extendable)
+export interface ChannelConfig {
+  channelId: string;
+  guildId: string;
+  enabled: boolean;
+}
+
+// ✅ Use type aliases for unions, primitives, computed types
+export type EventType = 'position_opened' | 'position_closed' | 'position_updated';
+export type ChannelConfigUpdate = Partial<Pick<ChannelConfig, 'enabled' | 'threshold'>>;
+```
+
+### Generic Type Constraints
+```typescript
+// ✅ Constrain generics meaningfully
+export interface Repository<T extends { id: string }> {
+  getById(id: string): Promise<T | null>;
+  save(entity: T): Promise<void>;
+}
+
+// ✅ Use mapped types for transformations
+export type EntityUpdate<T> = {
+  readonly [K in keyof T]?: T[K];
+};
+```
+
+## 🏗️ Class Construction Patterns
+
+### Constructor Parameter Properties
+```typescript
+// ✅ Use parameter properties for dependency injection
+export class SomeUseCase {
+  constructor(
+    private readonly repository: SomeRepository,
+    private readonly service: SomeService,
+    private readonly validator: PermissionValidator,
+  ) {}
+}
+
+// ✅ Make dependencies readonly to prevent reassignment
+// ✅ Use private for internal dependencies
+// ✅ Use protected only when inheritance is expected
+```
+
+### Factory Methods for Complex Creation
+```typescript
+export class ChannelConfigEntity {
+  private constructor(
+    public readonly channelId: string,
+    public readonly guildId: string,
+    public readonly config: ChannelConfigData,
+  ) {}
+
+  static create(data: CreateChannelConfigData): ChannelConfigEntity {
+    // Validation logic here
+    if (!data.channelId) throw new ValidationError('channelId is required');
+
+    return new ChannelConfigEntity(
+      data.channelId,
+      data.guildId,
+      {
+        enabled: data.enabled ?? true,
+        threshold: data.threshold ?? 0,
+        // ... other defaults
+      }
+    );
+  }
+
+  static createDefault(channelId: string, guildId: string): ChannelConfigEntity {
+    return new ChannelConfigEntity(channelId, guildId, {
+      enabled: true,
+      threshold: 0,
+      notifyOnClose: false,
+      pin: false,
+      image: false,
+      tagType: 'USER',
+      tagId: 0,
+    });
+  }
+}
+```
+
+## 🔒 Access Modifiers & Immutability
+
+### Readonly Properties
+```typescript
+// ✅ Make data immutable by default
+export interface ChannelConfig {
+  readonly channelId: string;
+  readonly guildId: string;
+  readonly enabled: boolean;
+}
+
+// ✅ Use readonly arrays and objects
+export interface GuildSettings {
+  readonly channelIds: readonly string[];
+  readonly config: Readonly<GuildConfigData>;
+}
+```
+
+### Method Visibility
+```typescript
+export class InteractionHandler {
+  // ✅ Public methods for external interface
+  async handleInteraction(interaction: ButtonInteraction): Promise<void> { }
+
+  // ✅ Private methods for internal logic
+  private async validatePermissions(guildId: string): Promise<boolean> { }
+
+  // ✅ Protected methods only if inheritance is intended
+  protected async processInteraction(data: InteractionData): Promise<void> { }
+}
+```
+
+## 🎭 Error Handling Patterns
+
+### Custom Error Classes
+```typescript
+// ✅ Extend BaseApplicationError for app-specific errors
+export class ValidationError extends BaseApplicationError {
+  constructor(field: string, value: unknown, requirement: string) {
+    super(
+      `Validation failed for field '${field}': ${requirement}`,
+      `❌ **Invalid ${field}**: ${requirement}`,
+      'VALIDATION_ERROR',
+      { field, value, requirement }
+    );
+  }
+}
+
+// ✅ Use Error base class for infrastructure errors
+export class DatabaseConnectionError extends Error {
+  constructor(cause: unknown) {
+    super(`Database connection failed: ${String(cause)}`);
+    this.name = 'DatabaseConnectionError';
+    this.cause = cause;
+  }
+}
+```
+
+### Error Type Guards
+```typescript
+// ✅ Create type guards for error handling
+export function isApplicationError(error: unknown): error is BaseApplicationError {
+  return error instanceof BaseApplicationError;
+}
+
+export function isPermissionError(error: unknown): error is BotPermissionError {
+  return error instanceof BotPermissionError;
+}
+
+// Usage in error handling
+try {
+  await someOperation();
+} catch (error) {
+  if (isApplicationError(error)) {
+    await sendInteractionError(interaction, error);
+  } else {
+    logger.error('Unexpected error', error as Error);
+    await sendInteractionError(interaction, error, {}, 'An unexpected error occurred');
+  }
+}
+```
+
+## 🔧 Function & Method Patterns
+
+### Function Signatures
+```typescript
+// ✅ Use descriptive parameter names and types
+async function processChannelMessage(
+  message: Message,
+  channelConfig: ChannelConfig,
+  guildSettings: GuildSettings,
+): Promise<ProcessingResult> {
+  // Implementation
+}
+
+// ✅ Use options object for many parameters
+interface CreateEmbedOptions {
+  title: string;
+  description?: string;
+  color?: number;
+  fields?: EmbedField[];
+  timestamp?: boolean;
+}
+
+function createEmbed(options: CreateEmbedOptions): EmbedBuilder {
+  // Implementation
+}
+```
+
+### Return Types
+```typescript
+// ✅ Always specify return types for public methods
+async function getChannelConfig(channelId: string): Promise<ChannelConfig | null> {
+  return this.repository.getByChannelId(channelId);
+}
+
+// ✅ Use union types for multiple return scenarios
+function validateInput(input: string): ValidationResult | ValidationError {
+  if (!input) return new ValidationError('input', input, 'Input cannot be empty');
+  return { isValid: true, normalizedInput: input.trim() };
+}
+```
+
+## 📦 Import/Export Patterns
+
+### Path Aliases (MANDATORY)
+```typescript
+// ✅ Always use path aliases from tsconfig.json
+import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import { PermissionValidator } from '@domain/interfaces/permission-validator.interface';
+import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
+import { logger } from '@helpers/logger';
+
+// ❌ Never use relative paths for cross-layer imports
+import { ChannelConfigEntity } from '../../../domain/entities/channel-config.entity';
+```
+
+### Named Exports (MANDATORY)
+```typescript
+// ✅ Use named exports exclusively
+export const SomeService = class { };
+export const someFunction = () => { };
+export const SOME_CONSTANT = 'value';
+
+// ✅ For re-exports
+export { SomeClass } from './some-class';
+export type { SomeInterface } from './some-interface';
+
+// ❌ Avoid default exports
+export default class SomeClass { } // Discouraged
+```
+
+### Import Organization
+```typescript
+// ✅ Group imports in this order:
+// 1. Node.js built-in modules
+import * as path from 'path';
+import * as fs from 'fs';
+
+// 2. External library imports
+import { Client, Message, EmbedBuilder } from 'discord.js';
+import * as AWS from 'aws-sdk';
+
+// 3. Internal imports (by layer: domain → application → infrastructure → presentation)
+import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
+import { GetChannelConfigUseCase } from '@application/use-cases/get-channel-config.use-case';
+import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
+import { sendInteractionError } from '@presentation/helpers/interaction-error.helper';
+
+// 4. Helper imports
+import { logger } from '@helpers/logger';
+```
+
+## 🎨 Code Formatting Rules
+
+### Line Length & Formatting
+```typescript
+// ✅ Max 120 characters per line
+// ✅ Break long function calls vertically
+const result = await someService.processComplexOperation(
+  parameter1,
+  parameter2,
+  {
+    option1: value1,
+    option2: value2,
+    option3: value3,
+  }
+);
+
+// ✅ Break long object literals vertically
+const config: ChannelConfig = {
+  channelId: 'channel_123',
+  guildId: 'guild_456',
+  enabled: true,
+  threshold: 100,
+  notifyOnClose: true,
+  pin: false,
+  image: true,
+  tagType: 'USER',
+  tagId: 123456789,
+};
+```
+
+### Comments & Documentation
+```typescript
+/**
+ * JSDoc for public APIs
+ * @param channelId - The Discord channel ID to validate
+ * @param permissions - Array of permission names to check
+ * @returns Promise that resolves when validation passes
+ * @throws {PermissionError} When bot lacks required permissions
+ */
+async function validateChannelPermissions(
+  channelId: string,
+  permissions: string[]
+): Promise<void> {
+  // Implementation comments for complex logic
+  const channel = await this.getChannel(channelId);
+
+  // Check each permission individually for detailed error reporting
+  for (const permission of permissions) {
+    if (!this.hasPermission(channel, permission)) {
+      throw new PermissionError(permission, channelId);
+    }
+  }
+}
+```
+
+These conventions ensure consistent, maintainable, and type-safe TypeScript code across the entire codebase.

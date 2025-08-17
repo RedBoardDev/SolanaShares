@@ -1,0 +1,286 @@
+---
+description: Discord UI components and interaction patterns for consistent user experience
+globs: src/presentation/ui/**/*.ts,src/presentation/listeners/**/*.ts,src/presentation/commands/**/*.ts
+alwaysApply: false
+---
+
+# Discord UI Patterns & Best Practices
+
+Standardized patterns for Discord embeds, components, modals, and interactions to ensure consistent UX.
+
+## 🎨 Embed Patterns
+
+### Standard Embed Structure
+```typescript
+import { EmbedBuilder } from 'discord.js';
+
+export function buildSomeEmbed(data: SomeData): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle('🎯 Clear Action-Oriented Title')
+    .setDescription('**Bold section headers** with clear context')
+    .addFields(
+      {
+        name: '📊 Data Section',
+        value: [
+          '• **Label**: Value with formatting',
+          '• **Status**: ✅ Enabled / ❌ Disabled',
+          '• **Amount**: `$1,234.56` (code formatting for numbers)'
+        ].join('\n'),
+        inline: false
+      }
+    )
+    .setColor(0x00AE86)  // Consistent brand colors
+    .setFooter({ text: 'Context info • Action guidance' });
+}
+```
+
+### Color Conventions
+```typescript
+const COLORS = {
+  SUCCESS: 0x00AE86,    // Green - successful operations
+  WARNING: 0xFFA500,    // Orange - warnings, pending states
+  ERROR: 0xFF4444,      // Red - errors, failures
+  INFO: 0x5865F2,       // Discord blue - information
+  NEUTRAL: 0x99AAB5     // Gray - neutral content
+} as const;
+```
+
+### Emoji Standards
+```typescript
+// Status indicators
+'✅ Enabled' | '❌ Disabled' | '⏸️ Paused' | '🔄 Processing'
+
+// Content types
+'📊 Data' | '⚙️ Settings' | '💰 Financial' | '🎯 Action' | '📋 List'
+
+// Navigation
+'➡️ Next' | '⬅️ Back' | '🔄 Refresh' | '❌ Cancel' | '✅ Confirm'
+```
+
+## 🔘 Component Patterns
+
+### Button Components
+```typescript
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+
+export function buildActionButtons(): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('action:primary:confirm')      // Hierarchical IDs
+        .setLabel('Confirm Action')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('✅'),
+      new ButtonBuilder()
+        .setCustomId('action:secondary:modify')
+        .setLabel('Modify Settings')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⚙️'),
+      new ButtonBuilder()
+        .setCustomId('action:danger:cancel')
+        .setLabel('Cancel')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('❌')
+    );
+}
+```
+
+### Select Menu Patterns
+```typescript
+import { StringSelectMenuBuilder, ActionRowBuilder } from 'discord.js';
+
+export function buildSelectMenu(): ActionRowBuilder<StringSelectMenuBuilder> {
+  return new ActionRowBuilder<StringSelectMenuBuilder>()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('select:category:options')
+        .setPlaceholder('🎯 Choose an option...')
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions([
+          {
+            label: 'Option Name',
+            description: 'Clear description of what this does',
+            value: 'option_value',
+            emoji: '📊'
+          }
+        ])
+    );
+}
+```
+
+## 📝 Modal Patterns
+
+### Input Validation Modal
+```typescript
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+
+export function buildDataInputModal(currentValue?: string): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId('modal:category:input')
+    .setTitle('Data Input Form')
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>()
+        .addComponents(
+          new TextInputBuilder()
+            .setCustomId('field_name')
+            .setLabel('Field Display Name')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Example: wallet address or 10.5')
+            .setRequired(true)
+            .setMaxLength(100)
+            .setValue(currentValue || '')
+        )
+    );
+}
+```
+
+## 🔄 Interaction Patterns
+
+### Custom ID Conventions
+```typescript
+// Hierarchical structure: category:action:target
+'setup:step1:channel'           // Setup flow, step 1, channel selection
+'server:toggle:positionDisplay' // Server settings, toggle action, specific setting
+'channel:config:pin'            // Channel config, config action, pin setting
+'modal:wallet:submit'           // Modal submission, wallet category
+
+// Navigation patterns
+'setup:back:2'                  // Go back to step 2
+'setup:cancel'                  // Cancel entire flow
+'setup:restart'                 // Restart from beginning
+```
+
+### State Management Pattern
+```typescript
+// For multi-step processes, use session services
+export class InteractionHandler {
+  constructor(
+    private readonly sessionService: SessionService  // Manage state between interactions
+  ) {}
+
+  async handleInteraction(interaction: SomeInteraction): Promise<void> {
+    const session = this.sessionService.getSession(guildId, userId);
+
+    // Validate session state
+    if (!session || !this.isValidState(session)) {
+      await sendSimpleInteractionError(interaction, '❌ Session expired. Please restart.');
+      return;
+    }
+
+    // Process with session context
+    await this.processWithSession(interaction, session);
+  }
+}
+```
+
+## ⚡ Interaction Response Patterns
+
+### Deferred Response Strategy
+```typescript
+async handleInteraction(interaction: ButtonInteraction): Promise<void> {
+  // Always defer for operations that might take > 3 seconds
+  await interaction.deferUpdate();
+
+  try {
+    // Long-running operation
+    const result = await this.processComplexOperation();
+
+    // Update with result
+    await interaction.editReply({
+      embeds: [buildResultEmbed(result)],
+      components: [buildFollowUpComponents()]
+    });
+  } catch (error) {
+    await sendInteractionError(interaction, error, { operation: 'complex_operation' });
+  }
+}
+```
+
+### Message Update Patterns
+```typescript
+// ✅ Proper update flow
+await interaction.deferUpdate();                    // Acknowledge immediately
+const newEmbed = buildUpdatedEmbed(newData);        // Build new content
+const newComponents = buildUpdatedComponents();     // Build new components
+await interaction.editReply({                       // Update atomically
+  embeds: [newEmbed],
+  components: newComponents
+});
+
+// ❌ Avoid - creates loading states
+await interaction.reply({ content: 'Processing...' });
+// ... processing ...
+await interaction.editReply({ embeds: [result] });
+```
+
+## 🎯 User Experience Guidelines
+
+### Loading States
+```typescript
+// Use emoji for visual feedback
+'🔄 Processing your request...'
+'⏳ Fetching latest data...'
+'💾 Saving configuration...'
+'✅ Configuration saved successfully!'
+```
+
+### Error Messages (see [discord-error-handling.mdc](mdc:.cursor/rules/discord-error-handling.mdc))
+```typescript
+// Always clear, actionable, and user-friendly
+'❌ **Missing Permissions**: The bot needs **View Channel** permission in #channel-name.'
+'❌ **Invalid Input**: Wallet address must be 32-44 characters long.'
+'❌ **Channel Not Found**: The selected channel no longer exists or is not accessible.'
+```
+
+### Success Feedback
+```typescript
+'✅ **Channel Added**: #channel-name is now being monitored for positions.'
+'✅ **Settings Updated**: Position display is now enabled in #global-channel.'
+'✅ **Setup Complete**: Your bot is configured and ready to use!'
+```
+
+## 📱 Component Layout Rules
+
+### Maximum Components per Message
+- **5 buttons** per ActionRow (Discord limit)
+- **3 ActionRows** per message (Discord limit)
+- **25 options** per SelectMenu (Discord limit)
+
+### Responsive Design
+```typescript
+// Adapt layouts based on content size
+export function buildAdaptiveComponents(items: Item[]): ActionRowBuilder<any>[] {
+  if (items.length <= 3) {
+    return [buildSingleRowButtons(items)];
+  } else {
+    return [buildSelectMenu(items), buildNavigationButtons()];
+  }
+}
+```
+
+## 🔐 Permission-Aware UI
+
+### Conditional Components
+```typescript
+export function buildContextualComponents(
+  userPermissions: PermissionsBitField,
+  botPermissions: PermissionsBitField
+): ActionRowBuilder<any>[] {
+  const components: ActionRowBuilder<any>[] = [];
+
+  // Only show admin actions if user has permissions
+  if (userPermissions.has(PermissionFlagsBits.Administrator)) {
+    components.push(buildAdminActions());
+  }
+
+  // Only show features if bot has required permissions
+  if (botPermissions.has(PermissionFlagsBits.ManageMessages)) {
+    components.push(buildPinActions());
+  }
+
+  return components;
+}
+```
+
+Follow these patterns to ensure consistent, accessible, and professional Discord UI across all bot interactions.

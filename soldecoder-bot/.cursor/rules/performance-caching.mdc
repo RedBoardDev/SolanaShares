@@ -1,0 +1,351 @@
+---
+description: Performance optimization and caching strategies for Discord bot critical path
+globs: src/infrastructure/**/*.ts,src/presentation/listeners/message-create/**/*.ts,src/application/use-cases/**/*.ts
+alwaysApply: false
+---
+
+# Performance & Caching Rules
+
+Critical performance patterns for Discord bot message processing and database optimization.
+
+## 🚀 Critical Performance Rules
+
+### **ZERO DATABASE QUERIES** in Message Processing
+```typescript
+// ✅ CORRECT - Cache-only access in hot path
+export class MessageProcessingRule implements MessageRule {
+  async execute(message: Message): Promise<void> {
+    const config = this.cache.getChannelConfig(message.channelId);
+    if (!config) return; // Early exit, no DB fallback
+
+    // Process with cached config only
+    await this.processMessage(message, config);
+  }
+}
+
+// ❌ FORBIDDEN - Database query in message processing
+export class BadMessageRule implements MessageRule {
+  async execute(message: Message): Promise<void> {
+    const config = await this.repository.getByChannelId(message.channelId); // NEVER DO THIS
+    // This will destroy performance and cost money
+  }
+}
+```
+
+### Cache Architecture (see [DATABASE.md](mdc:DATABASE.md))
+```typescript
+// Cache structure from cache.service.ts pattern
+export class CacheService {
+  private readonly channelCache = new Map<string, ChannelConfig & { guildId: string }>();
+  private readonly guildChannelsCache = new Map<string, string[]>();
+  private readonly guildSettingsCache = new Map<string, GuildSettings>();
+
+  // O(1) lookups for message processing
+  getChannelConfig(channelId: string): ChannelConfig | null {
+    return this.channelCache.get(channelId) || null;
+  }
+
+  getGuildChannels(guildId: string): string[] {
+    return this.guildChannelsCache.get(guildId) || [];
+  }
+}
+```
+
+## 📊 Cache Update Patterns
+
+### **MANDATORY** Cache Synchronization
+```typescript
+// ALWAYS update cache immediately after database operations
+export class SomeRepository {
+  async save(entity: SomeEntity): Promise<void> {
+    // 1. Write to database first
+    await this.dynamodb.putItem(/* entity data */).promise();
+
+    // 2. Update cache immediately (CRITICAL)
+    this.cache.set(entity.id, entity);
+
+    // 3. Update related caches if needed
+    this.updateRelatedCaches(entity);
+  }
+
+  async delete(id: string): Promise<void> {
+    // 1. Delete from database
+    await this.dynamodb.deleteItem({ Key: { id } }).promise();
+
+    // 2. Remove from cache immediately (CRITICAL)
+    this.cache.delete(id);
+
+    // 3. Clean up related caches
+    this.cleanupRelatedCaches(id);
+  }
+}
+```
+
+### Cache Initialization Pattern
+```typescript
+// Single scan at startup to populate all caches
+export class CacheInitializerService {
+  async initializeCache(): Promise<void> {
+    logger.info('Initializing cache from database...');
+
+    const startTime = Date.now();
+    const allItems = await this.dynamodb.scan({
+      TableName: this.tableName
+    }).promise();
+
+    for (const item of allItems.Items || []) {
+      this.processItemIntoCache(item);
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info(`Cache initialized in ${duration}ms with ${allItems.Count} items`);
+  }
+}
+```
+
+## ⚡ Performance Optimization Patterns
+
+### Early Exit Strategies
+```typescript
+// Exit as early as possible to avoid unnecessary processing
+export class OptimizedMessageRule implements MessageRule {
+  matches(message: Message): boolean {
+    // Cheapest checks first
+    if (message.author.bot) return false;
+    if (!message.content) return false;
+
+    // More expensive checks last
+    const config = this.cache.getChannelConfig(message.channelId);
+    return config !== null;
+  }
+
+  async execute(message: Message): Promise<void> {
+    // Already know config exists from matches()
+    const config = this.cache.getChannelConfig(message.channelId)!;
+
+    // Process immediately
+    await this.processMessage(message, config);
+  }
+}
+```
+
+### Batch Processing for Non-Critical Operations
+```typescript
+// Batch non-critical updates to reduce API calls
+export class BatchProcessor {
+  private readonly updateQueue: UpdateOperation[] = [];
+  private readonly BATCH_SIZE = 25; // DynamoDB batch limit
+
+  queueUpdate(operation: UpdateOperation): void {
+    this.updateQueue.push(operation);
+
+    if (this.updateQueue.length >= this.BATCH_SIZE) {
+      // Don't await - process in background
+      this.processBatch().catch(error => {
+        logger.error('Batch processing failed', error);
+      });
+    }
+  }
+
+  private async processBatch(): Promise<void> {
+    const batch = this.updateQueue.splice(0, this.BATCH_SIZE);
+
+    // Process batch with DynamoDB BatchWriteItem
+    await this.dynamodb.batchWriteItem({
+      RequestItems: {
+        [this.tableName]: batch.map(op => ({ PutRequest: { Item: op.data } }))
+      }
+    }).promise();
+  }
+}
+```
+
+## 🔄 API Rate Limiting & Load Balancing
+
+### Rate Limiter Pattern (see [rate-limiter.service.ts](mdc:src/infrastructure/services/rate-limiter.service.ts))
+```typescript
+export class APIService {
+  constructor(
+    private readonly rateLimiter: RateLimiterService,
+    private readonly loadBalancer: APILoadBalancer
+  ) {}
+
+  async makeAPICall<T>(request: APIRequest): Promise<T> {
+    // Check rate limits before API call
+    await this.rateLimiter.checkLimit(request.endpoint);
+
+    try {
+      // Use load balancer for failover
+      return await this.loadBalancer.executeRequest(request);
+    } catch (error) {
+      // Handle rate limit errors gracefully
+      if (this.isRateLimitError(error)) {
+        await this.rateLimiter.backoff(request.endpoint);
+        throw new APIRateLimitError('API rate limit exceeded', { endpoint: request.endpoint });
+      }
+      throw error;
+    }
+  }
+}
+```
+
+### Dual API Key Pattern
+```typescript
+// Use multiple API keys for higher rate limits
+export class LoadBalancedAPIClient {
+  constructor(
+    private readonly primaryKey: string,
+    private readonly secondaryKey: string
+  ) {}
+
+  async request<T>(endpoint: string, params: any): Promise<T> {
+    try {
+      return await this.makeRequest(endpoint, params, this.primaryKey);
+    } catch (error) {
+      if (this.isRateLimitError(error)) {
+        // Fallback to secondary key
+        return await this.makeRequest(endpoint, params, this.secondaryKey);
+      }
+      throw error;
+    }
+  }
+}
+```
+
+## 📈 Memory Management
+
+### Cache Size Limits
+```typescript
+export class BoundedCache<K, V> {
+  private readonly cache = new Map<K, V>();
+  private readonly maxSize: number;
+
+  constructor(maxSize: number = 10000) {
+    this.maxSize = maxSize;
+  }
+
+  set(key: K, value: V): void {
+    // Remove oldest entries if at capacity
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, value);
+  }
+}
+```
+
+### Memory Leak Prevention
+```typescript
+// Clean up event listeners and timers
+export class ServiceWithCleanup {
+  private readonly intervals: NodeJS.Timeout[] = [];
+  private readonly listeners: Array<{ emitter: EventEmitter; event: string; handler: Function }> = [];
+
+  addInterval(callback: () => void, ms: number): void {
+    const interval = setInterval(callback, ms);
+    this.intervals.push(interval);
+  }
+
+  addListener(emitter: EventEmitter, event: string, handler: Function): void {
+    emitter.on(event, handler);
+    this.listeners.push({ emitter, event, handler });
+  }
+
+  cleanup(): void {
+    // Clear all intervals
+    this.intervals.forEach(interval => clearInterval(interval));
+    this.intervals.length = 0;
+
+    // Remove all listeners
+    this.listeners.forEach(({ emitter, event, handler }) => {
+      emitter.removeListener(event, handler);
+    });
+    this.listeners.length = 0;
+  }
+}
+```
+
+## 🎯 Performance Monitoring
+
+### Performance Metrics
+```typescript
+export class PerformanceTracker {
+  private readonly metrics = new Map<string, { count: number; totalTime: number }>();
+
+  async trackOperation<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    const startTime = Date.now();
+
+    try {
+      const result = await fn();
+      this.recordSuccess(operation, Date.now() - startTime);
+      return result;
+    } catch (error) {
+      this.recordError(operation, Date.now() - startTime);
+      throw error;
+    }
+  }
+
+  private recordSuccess(operation: string, duration: number): void {
+    const metric = this.metrics.get(operation) || { count: 0, totalTime: 0 };
+    metric.count++;
+    metric.totalTime += duration;
+    this.metrics.set(operation, metric);
+
+    // Log slow operations
+    if (duration > 1000) {
+      logger.warn(`Slow operation detected: ${operation} took ${duration}ms`);
+    }
+  }
+}
+```
+
+## 🚨 Performance Anti-Patterns
+
+### ❌ NEVER DO THESE:
+```typescript
+// Database queries in message processing
+await repository.getByChannelId(channelId); // In MessageRule.execute()
+
+// Synchronous Discord API calls without rate limiting
+await channel.send(message); // Without rate limit checks
+
+// Missing cache updates after database writes
+await repository.save(entity);
+// Missing: cache.set(entity.id, entity);
+
+// Memory leaks in long-running services
+setInterval(() => {}, 1000); // Without cleanup mechanism
+
+// Blocking operations in event handlers
+await heavyComputation(); // In message listener without queue
+
+// N+1 queries in batch operations
+for (const item of items) {
+  await repository.getById(item.id); // Query per item
+}
+```
+
+## 📊 Cost Optimization
+
+### DynamoDB Cost Management
+```typescript
+// Use consistent read for non-critical operations
+const config = await this.dynamodb.getItem({
+  TableName: this.tableName,
+  Key: { id },
+  ConsistentRead: false // Eventually consistent is cheaper
+}).promise();
+
+// Batch operations when possible
+const batchResult = await this.dynamodb.batchGetItem({
+  RequestItems: {
+    [this.tableName]: {
+      Keys: ids.map(id => ({ id }))
+    }
+  }
+}).promise();
+```
+
+Follow these performance rules religiously to maintain sub-100ms response times and minimize operational costs.

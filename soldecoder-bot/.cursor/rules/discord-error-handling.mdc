@@ -1,0 +1,185 @@
+---
+description: Discord Bot Error Handling - Comprehensive system for managing Discord API errors and permissions
+alwaysApply: false
+---
+# Discord Bot Error Handling System
+
+This rule ensures comprehensive error handling for Discord bot interactions using our established error handling architecture.
+
+## Core Error Handling Components
+
+### Error Helper Functions
+- **[interaction-error.helper.ts](mdc:src/presentation/helpers/interaction-error.helper.ts)**: Centralized error handling
+  - `sendInteractionError(interaction, error, context, fallbackMessage)` - Handles both BaseApplicationError and unexpected errors
+  - `sendSimpleInteractionError(interaction, message, context)` - Simple ephemeral error messages
+  - `sendEarlyInteractionError(interaction, message, context)` - For pre-deferred interactions
+
+### Custom Error Classes
+- **[base.error.ts](mdc:src/application/errors/base.error.ts)**: `BaseApplicationError` - Foundation for all custom errors
+- **[permission.errors.ts](mdc:src/application/errors/permission.errors.ts)**: `BotPermissionError`, `UserPermissionError`, `ChannelAccessError`
+- **[channel.errors.ts](mdc:src/application/errors/channel.errors.ts)**: `ChannelNotFoundError`, `ChannelFeaturePermissionError`, `MentionPermissionError`
+
+### Permission Validation
+- **[permission-validator.interface.ts](mdc:src/domain/interfaces/permission-validator.interface.ts)**: Interface for permission validation
+- **[permission-validator.service.ts](mdc:src/infrastructure/services/permission-validator.service.ts)**: Implementation with specific validation methods
+
+## **MANDATORY** Error Handling Patterns
+
+### 1. Discord Interaction Handlers
+**ALWAYS** wrap Discord interaction handling in try/catch:
+
+```typescript
+async handleInteraction(interaction: ButtonInteraction): Promise<void> {
+  try {
+    // Early validation
+    if (!interaction.guildId) {
+      await sendEarlyInteractionError(interaction, '❌ This can only be used in a server.');
+      return;
+    }
+
+    // Your interaction logic here
+
+  } catch (error) {
+    await sendInteractionError(interaction, error, {
+      operation: 'specific_operation_name',
+      customId: interaction.customId,
+      guildId: interaction.guildId,
+    });
+  }
+}
+```
+
+### 2. Permission Validation Before Channel Operations
+**ALWAYS** validate bot permissions before channel operations:
+
+```typescript
+// For basic channel access
+try {
+  await this.permissionValidator.validateChannelAccess(interaction.guild!, channelId);
+} catch (error) {
+  await sendInteractionError(interaction, error, {
+    channelId,
+    operation: 'channel_access_validation'
+  });
+  return;
+}
+
+// For specific features
+try {
+  await this.permissionValidator.validatePinFeature(guild, channelId);
+  // or validateImageFeature, validateNotificationFeature, validateMentionFeature
+} catch (error) {
+  await sendInteractionError(interaction, error, {
+    channelId,
+    feature: 'pin_feature',
+    operation: 'feature_permission_validation'
+  });
+  return;
+}
+```
+
+### 3. Validation Methods Pattern
+**ALWAYS** return boolean from validation methods instead of throwing:
+
+```typescript
+private async validateInput(interaction: InteractionType, input: string): Promise<boolean> {
+  if (!isValid(input)) {
+    await sendSimpleInteractionError(interaction, '❌ Invalid input provided.', {
+      input,
+      guildId: interaction.guildId,
+      operation: 'input_validation'
+    });
+    return false;
+  }
+  return true;
+}
+
+// Usage
+const isValid = await this.validateInput(interaction, userInput);
+if (!isValid) return; // Exit early on validation failure
+```
+
+### 4. Constructor Dependency Injection
+**ALWAYS** inject PermissionValidatorService for permission-sensitive operations:
+
+```typescript
+export class YourInteractionHandler {
+  private readonly permissionValidator: PermissionValidatorService;
+
+  constructor() {
+    this.permissionValidator = new PermissionValidatorService();
+  }
+}
+```
+
+## **FORBIDDEN** Patterns
+
+### ❌ Never Do These:
+1. **Direct interaction.reply for errors**: Use our error helpers instead
+2. **Generic Error throwing**: Use specific custom error classes
+3. **Missing permission validation**: Always validate before channel operations
+4. **Embedding deletions for errors**: Use ephemeral messages only
+5. **Throwing after sending error messages**: Return early instead
+
+### ❌ Bad Examples:
+```typescript
+// DON'T DO THIS
+await interaction.reply({ content: '❌ Error', ephemeral: true });
+throw new Error('Generic error');
+if (hasError) throw error; // After already sending error message
+```
+
+## Context Requirements
+
+### Interaction Context
+**ALWAYS** provide rich context for error logging:
+```typescript
+const context = {
+  operation: 'descriptive_operation_name',
+  guildId: interaction.guildId,
+  userId: interaction.user.id,
+  channelId: selectedChannelId,
+  step: currentStep, // For multi-step processes
+  customId: interaction.customId
+};
+```
+
+### Permission Context
+```typescript
+const permissionContext = {
+  channelId,
+  feature: 'feature_name',
+  requiredPermissions: ['Permission1', 'Permission2'],
+  operation: 'permission_validation'
+};
+```
+
+## Implementation Checklist
+
+When implementing Discord error handling:
+
+- [ ] Import error helpers: `import { sendInteractionError, sendSimpleInteractionError } from '@presentation/helpers/interaction-error.helper';`
+- [ ] Import permission validator: `import { PermissionValidatorService } from '@infrastructure/services/permission-validator.service';`
+- [ ] Import custom errors if creating new ones: `import { BaseApplicationError } from '@application/errors/base.error';`
+- [ ] Wrap all interaction handlers in try/catch
+- [ ] Validate permissions before channel operations
+- [ ] Use boolean returns for validation methods
+- [ ] Provide comprehensive context for logging
+- [ ] Use ephemeral messages for all errors
+- [ ] Never throw after sending error messages
+
+## Error Message Guidelines
+
+### User-Facing Messages
+- **Clear and actionable**: Tell user what went wrong and what they can do
+- **Professional tone**: Use ❌ prefix for errors, ✅ for success
+- **Specific**: "Bot needs **View Channel** permission" vs "Permission error"
+
+### Examples:
+```typescript
+'❌ **Missing Permissions**: The bot needs **View Channel** and **Send Messages** permissions in #channel-name to work properly.'
+'❌ **Invalid Channel**: Please select a valid text channel for notifications.'
+'❌ **Setup Incomplete**: Please fill all required fields before continuing.'
+```
+
+This system ensures robust error handling across all Discord bot interactions while maintaining a consistent user experience.
