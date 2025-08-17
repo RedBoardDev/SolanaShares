@@ -25,7 +25,7 @@ export function validateThreshold(input: string): { isValid: boolean; value?: nu
   const trimmed = input.trim();
 
   const num = Number.parseFloat(trimmed);
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     return { isValid: false, error: 'Please enter a valid number' };
   }
 

@@ -39,8 +39,8 @@ export function buildServerSettingsEmbed(guildSettings: GuildSettingsEntity, glo
       value: [
         '• **Position Display**: Shows position summaries from followed channels in global channel',
         '• **Forward TP/SL**: Sends take-profit and stop-loss alerts to global channel',
-        '• **Auto-delete Warnings**: Automatically removes bot warning messages after 10 seconds',
-        '• **Position Size Defaults**: Default wallet and stop-loss for `/position-size` command'
+        '• **Auto-delete Warnings**: Automatically removes \'pool search\' bot warning messages',
+        '• **Position Size Defaults**: Default wallet and stop-loss for `/position-size` command',
       ].join('\n'),
       inline: false,
     },
@@ -48,7 +48,7 @@ export function buildServerSettingsEmbed(guildSettings: GuildSettingsEntity, glo
       name: '🔗 Quick Access',
       value: '📋 **Manage Channels** → Use buttons below to configure followed channels',
       inline: false,
-    }
+    },
   );
 
   return embed;
