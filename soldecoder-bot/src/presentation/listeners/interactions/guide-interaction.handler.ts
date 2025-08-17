@@ -4,6 +4,7 @@ import { buildChannelListEmbed, buildChannelListComponents } from '@presentation
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import { GetGuildChannelsUseCase } from '@application/use-cases/get-guild-channels.use-case';
+import { sendSimpleInteractionError } from '@presentation/helpers/interaction-error.helper';
 import { logger } from '@helpers/logger';
 import { ChannelType } from 'discord.js';
 
@@ -18,7 +19,7 @@ export class GuideInteractionHandler {
     this.getChannelsUC = new GetGuildChannelsUseCase(this.channelRepo);
   }
 
-  async handleInteraction(interaction: ButtonInteraction): Promise<void> {
+  async handleInteraction(interaction: ButtonInteraction | any): Promise<void> {
     if (!interaction.guildId) {
       await interaction.reply({ content: '❌ This can only be used in a server.', flags: 64 });
       return;
@@ -38,12 +39,14 @@ export class GuideInteractionHandler {
     } catch (error) {
       logger.error(`Error handling guide interaction: ${customId}`, error as Error);
 
-      const content = '❌ An error occurred. Please try again.';
       try {
         if (interaction.replied || interaction.deferred) {
-          await interaction.editReply({ content });
+          await sendSimpleInteractionError(interaction, '❌ An error occurred. Please try again.', {
+            guildId: interaction.guildId,
+            customId,
+          });
         } else {
-          await interaction.reply({ content, flags: 64 });
+          await interaction.reply({ content: '❌ An error occurred. Please try again.', ephemeral: true });
         }
       } catch (replyError) {
         logger.error('Failed to send error response', replyError as Error);
@@ -54,11 +57,14 @@ export class GuideInteractionHandler {
   private async handleViewSettings(interaction: ButtonInteraction, guildId: string): Promise<void> {
     const guildSettings = await this.guildRepo.getByGuildId(guildId);
     if (!guildSettings) {
-      await interaction.update({
-        content: '❌ Guild settings not found. Please run `/start` to configure your server.',
-        embeds: [],
-        components: []
-      });
+      await sendSimpleInteractionError(
+        interaction,
+        '❌ Guild settings not found. Please run `/start` to configure your server.',
+        {
+          guildId: interaction.guildId,
+          operation: 'view_settings',
+        },
+      );
       return;
     }
 
@@ -73,23 +79,23 @@ export class GuideInteractionHandler {
 
     await interaction.update({
       embeds: [embed],
-      components: components
+      components: components,
     });
   }
 
   private async handleSetupChannels(interaction: ButtonInteraction, guildId: string): Promise<void> {
     const channels = await this.getChannelsUC.execute(guildId);
 
-    const guildChannels = interaction.guild!.channels.cache
-      .filter(ch => ch.type === ChannelType.GuildText)
-      .map(ch => ({ id: ch.id, name: ch.name }));
+    const guildChannels = interaction
+      .guild!.channels.cache.filter((ch) => ch.type === ChannelType.GuildText)
+      .map((ch) => ({ id: ch.id, name: ch.name }));
 
     const embed = buildChannelListEmbed(channels);
     const components = buildChannelListComponents(channels, guildChannels);
 
     await interaction.update({
       embeds: [embed],
-      components: components
+      components: components,
     });
   }
 }

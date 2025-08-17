@@ -1,7 +1,7 @@
 import type { Interaction } from 'discord.js';
 import { ChannelInteractionHandler } from './channel-interaction.handler';
 import { ServerInteractionHandler } from './server-interaction.handler';
-import { SetupInteractionHandler } from './setup-interaction.handler';
+import { SetupInteractionHandler } from './setup-account';
 import { GuideInteractionHandler } from './guide-interaction.handler';
 import { logger } from '@helpers/logger';
 
@@ -27,12 +27,14 @@ export class InteractionRouter {
   }
 
   async routeInteraction(interaction: Interaction): Promise<void> {
-    if (!interaction.isButton() &&
-        !interaction.isStringSelectMenu() &&
-        !interaction.isChannelSelectMenu() &&
-        !interaction.isModalSubmit() &&
-        !interaction.isUserSelectMenu() &&
-        !interaction.isRoleSelectMenu()) {
+    if (
+      !interaction.isButton() &&
+      !interaction.isStringSelectMenu() &&
+      !interaction.isChannelSelectMenu() &&
+      !interaction.isModalSubmit() &&
+      !interaction.isUserSelectMenu() &&
+      !interaction.isRoleSelectMenu()
+    ) {
       return;
     }
 
@@ -40,10 +42,12 @@ export class InteractionRouter {
     logger.debug(`Routing interaction: ${customId}`);
 
     try {
-      if (customId.startsWith('channels:') ||
-          customId.startsWith('channel:') ||
-          customId.startsWith('threshold:') ||
-          customId.startsWith('tag:')) {
+      if (
+        customId.startsWith('channels:') ||
+        customId.startsWith('channel:') ||
+        customId.startsWith('threshold:') ||
+        customId.startsWith('tag:')
+      ) {
         await this.channelHandler.handleInteraction(interaction);
       } else if (customId.startsWith('server:')) {
         await this.serverHandler.handleInteraction(interaction);

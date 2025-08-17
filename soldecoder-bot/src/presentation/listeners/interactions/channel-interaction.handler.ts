@@ -9,11 +9,17 @@ import {
   PermissionFlagsBits,
 } from 'discord.js';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
+import { PermissionValidatorService } from '@infrastructure/services/permission-validator.service';
 import { AddChannelConfigUseCase } from '@application/use-cases/add-channel-config.use-case';
 import { RemoveChannelConfigUseCase } from '@application/use-cases/remove-channel-config.use-case';
 import { UpdateChannelConfigUseCase } from '@application/use-cases/update-channel-config.use-case';
 import { GetChannelConfigUseCase } from '@application/use-cases/get-channel-config.use-case';
 import { GetGuildChannelsUseCase } from '@application/use-cases/get-guild-channels.use-case';
+import {
+  sendInteractionError,
+  sendSimpleInteractionError,
+  sendEarlyInteractionError,
+} from '@presentation/helpers/interaction-error.helper';
 import { buildChannelListEmbed, buildChannelListComponents } from '@presentation/ui/embeds/channel-list.embed';
 import { buildChannelDetailEmbed, buildChannelDetailComponents } from '@presentation/ui/embeds/channel-detail.embed';
 import { buildThresholdModal, validateThreshold } from '@presentation/ui/modals/threshold.modal';
@@ -22,6 +28,7 @@ import { logger } from '@helpers/logger';
 
 export class ChannelInteractionHandler {
   private readonly channelRepo: DynamoChannelConfigRepository;
+  private readonly permissionValidator: PermissionValidatorService;
   private readonly addChannelUC: AddChannelConfigUseCase;
   private readonly removeChannelUC: RemoveChannelConfigUseCase;
   private readonly updateChannelUC: UpdateChannelConfigUseCase;
@@ -30,14 +37,24 @@ export class ChannelInteractionHandler {
 
   constructor() {
     this.channelRepo = new DynamoChannelConfigRepository();
-    this.addChannelUC = new AddChannelConfigUseCase(this.channelRepo);
+    this.permissionValidator = new PermissionValidatorService();
+    this.addChannelUC = new AddChannelConfigUseCase(this.channelRepo, this.permissionValidator);
     this.removeChannelUC = new RemoveChannelConfigUseCase(this.channelRepo);
     this.updateChannelUC = new UpdateChannelConfigUseCase(this.channelRepo);
     this.getChannelUC = new GetChannelConfigUseCase(this.channelRepo);
     this.getGuildChannelsUC = new GetGuildChannelsUseCase(this.channelRepo);
   }
 
-  async handleInteraction(interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | ModalSubmitInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction): Promise<void> {
+  async handleInteraction(
+    interaction:
+      | ButtonInteraction
+      | StringSelectMenuInteraction
+      | ChannelSelectMenuInteraction
+      | ModalSubmitInteraction
+      | UserSelectMenuInteraction
+      | RoleSelectMenuInteraction
+      | any,
+  ): Promise<void> {
     if (!interaction.guildId) {
       await interaction.reply({ content: '❌ This can only be used in a server.', ephemeral: true });
       return;
@@ -100,28 +117,22 @@ export class ChannelInteractionHandler {
 
   private async handleAddChannel(interaction: ChannelSelectMenuInteraction): Promise<void> {
     const channelId = interaction.values[0];
-
     await interaction.deferUpdate();
 
     try {
-      const existingConfig = await this.getChannelUC.execute(channelId);
-      if (existingConfig) {
-        await interaction.editReply({
-          content: `❌ Channel "${interaction.guild!.channels.cache.get(channelId)?.name || 'Unknown'}" is already configured.`,
-          embeds: [],
-          components: []
-        });
-        return;
-      }
-
-      await this.addChannelUC.execute(channelId, interaction.guildId!);
+      await this.addChannelUC.execute(channelId, interaction.guild!);
       await this.refreshChannelsList(interaction);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to add channel: ${(error as Error).message}`,
-        embeds: [],
-        components: []
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'add_channel',
+          channelId,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to add channel. Please try again later.',
+      );
     }
   }
 
@@ -134,11 +145,16 @@ export class ChannelInteractionHandler {
       await this.removeChannelUC.execute(channelId);
       await this.refreshChannelsList(interaction);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to remove channel: ${(error as Error).message}`,
-        embeds: [],
-        components: []
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'remove_channel',
+          channelId,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to remove channel. Please try again later.',
+      );
     }
   }
 
@@ -147,7 +163,10 @@ export class ChannelInteractionHandler {
     await this.refreshChannelsList(interaction);
   }
 
-  private async handleChannelConfig(interaction: ButtonInteraction | ModalSubmitInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction, channelId?: string): Promise<void> {
+  private async handleChannelConfig(
+    interaction: ButtonInteraction | ModalSubmitInteraction | UserSelectMenuInteraction | RoleSelectMenuInteraction,
+    channelId?: string,
+  ): Promise<void> {
     if (!channelId) {
       const parts = interaction.customId.split(':');
       if (parts[0] === 'channel' && parts[1] === 'config') {
@@ -164,7 +183,10 @@ export class ChannelInteractionHandler {
     try {
       const channelConfig = await this.getChannelUC.execute(channelId);
       if (!channelConfig) {
-        await interaction.editReply({ content: '❌ Channel configuration not found.' });
+        await sendSimpleInteractionError(interaction, '❌ Channel configuration not found.', {
+          channelId,
+          guildId: interaction.guildId,
+        });
         return;
       }
 
@@ -183,9 +205,16 @@ export class ChannelInteractionHandler {
 
       await interaction.editReply({ embeds: [embed], components });
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to load channel configuration: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'load_channel_config',
+          channelId,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to load channel configuration. Please try again later.',
+      );
     }
   }
 
@@ -199,8 +228,24 @@ export class ChannelInteractionHandler {
     try {
       const currentConfig = await this.getChannelUC.execute(channelId);
       if (!currentConfig) {
-        await interaction.editReply({ content: '❌ Channel configuration not found.' });
+        await sendSimpleInteractionError(interaction, '❌ Channel configuration not found.', {
+          channelId,
+          action,
+          guildId: interaction.guildId,
+        });
         return;
+      }
+
+      // Validate permissions before enabling features
+      if (action === 'notifyOnClose' && !currentConfig.notifyOnClose) {
+        // Enabling notifications - check permissions
+        await this.permissionValidator.validateNotificationFeature(interaction.guild!, channelId);
+      } else if (action === 'image' && !currentConfig.image) {
+        // Enabling images - check permissions
+        await this.permissionValidator.validateImageFeature(interaction.guild!, channelId);
+      } else if (action === 'pin' && !currentConfig.pin) {
+        // Enabling pin - check permissions
+        await this.permissionValidator.validatePinFeature(interaction.guild!, channelId);
       }
 
       let actualUpdates;
@@ -218,9 +263,17 @@ export class ChannelInteractionHandler {
 
       await this.handleChannelConfig(interaction, channelId);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to update setting: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'toggle_setting',
+          channelId,
+          action,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to update setting. Please try again later.',
+      );
     }
   }
 
@@ -229,7 +282,10 @@ export class ChannelInteractionHandler {
 
     const currentConfig = await this.getChannelUC.execute(channelId);
     if (!currentConfig) {
-      await interaction.reply({ content: '❌ Channel configuration not found.', ephemeral: true });
+      await sendEarlyInteractionError(interaction, '❌ Channel configuration not found.', {
+        channelId,
+        guildId: interaction.guildId,
+      });
       return;
     }
 
@@ -246,7 +302,11 @@ export class ChannelInteractionHandler {
     try {
       const validation = validateThreshold(thresholdInput);
       if (!validation.isValid) {
-        await interaction.editReply({ content: `❌ ${validation.error}` });
+        await sendSimpleInteractionError(interaction, `❌ ${validation.error}`, {
+          channelId,
+          thresholdInput,
+          guildId: interaction.guildId,
+        });
         return;
       }
 
@@ -254,9 +314,17 @@ export class ChannelInteractionHandler {
 
       await this.handleChannelConfig(interaction, channelId);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to update threshold: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'update_threshold',
+          channelId,
+          thresholdInput,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to update threshold. Please try again later.',
+      );
     }
   }
 
@@ -275,20 +343,28 @@ export class ChannelInteractionHandler {
         const userSelectComponent = buildUserSelectComponent(channelId);
         await interaction.editReply({
           content: '👤 Select a user to tag when notifications are sent:',
-          components: [userSelectComponent]
+          components: [userSelectComponent],
         });
       } else if (action === 'select_role') {
         // TODO: add role select component
         const roleSelectComponent = buildRoleSelectComponent(channelId);
         await interaction.editReply({
           content: '👥 Select a role to tag when notifications are sent:',
-          components: [roleSelectComponent]
+          components: [roleSelectComponent],
         });
       }
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to update tag: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'update_tag',
+          channelId,
+          action,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to update tag. Please try again later.',
+      );
     }
   }
 
@@ -299,16 +375,27 @@ export class ChannelInteractionHandler {
     await interaction.deferUpdate();
 
     try {
+      // Validate mention permissions before setting user tag
+      await this.permissionValidator.validateMentionFeature(interaction.guild!, channelId, 'USER');
+
       await this.updateChannelUC.execute(channelId, {
         tagType: 'USER',
-        tagId: selectedUserId
+        tagId: selectedUserId,
       });
 
       await this.handleChannelConfig(interaction, channelId);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to set user tag: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'set_user_tag',
+          channelId,
+          selectedUserId,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to set user tag. Please try again later.',
+      );
     }
   }
 
@@ -319,29 +406,40 @@ export class ChannelInteractionHandler {
     await interaction.deferUpdate();
 
     try {
+      // Validate mention permissions before setting role tag
+      await this.permissionValidator.validateMentionFeature(interaction.guild!, channelId, 'ROLE');
+
       await this.updateChannelUC.execute(channelId, {
         tagType: 'ROLE',
-        tagId: selectedRoleId
+        tagId: selectedRoleId,
       });
 
       await this.handleChannelConfig(interaction, channelId);
     } catch (error) {
-      await interaction.editReply({
-        content: `❌ Failed to set role tag: ${(error as Error).message}`
-      });
+      await sendInteractionError(
+        interaction,
+        error,
+        {
+          operation: 'set_role_tag',
+          channelId,
+          selectedRoleId,
+          guildId: interaction.guildId,
+        },
+        '❌ **Unexpected Error**: Failed to set role tag. Please try again later.',
+      );
     }
   }
 
   private async refreshChannelsList(
     interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction,
     showAddDropdown = false,
-    showRemoveDropdown = false
+    showRemoveDropdown = false,
   ): Promise<void> {
     const channels = await this.getGuildChannelsUC.execute(interaction.guildId!);
 
-    const guildChannels = interaction.guild!.channels.cache
-      .filter(ch => ch.type === ChannelType.GuildText)
-      .map(ch => ({ id: ch.id, name: ch.name }));
+    const guildChannels = interaction
+      .guild!.channels.cache.filter((ch) => ch.type === ChannelType.GuildText)
+      .map((ch) => ({ id: ch.id, name: ch.name }));
 
     const embed = buildChannelListEmbed(channels);
     const components = buildChannelListComponents(channels, guildChannels, showAddDropdown, showRemoveDropdown);
