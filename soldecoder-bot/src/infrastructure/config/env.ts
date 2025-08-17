@@ -28,6 +28,9 @@ const EnvSchema = z.object({
 
   // LpAgent API
   LPAGENT_X_AUTH: z.string().nonempty(),
+
+  // Donation
+  DONATE_SOLANA_ADDRESS: z.string().nonempty(),
 });
 
 const _env = EnvSchema.safeParse(process.env);
@@ -60,6 +63,9 @@ export const config = {
   },
   lpagent: {
     xAuth: _env.data.LPAGENT_X_AUTH,
+  },
+  donate: {
+    solanaAddress: _env.data.DONATE_SOLANA_ADDRESS,
   },
 } as const;
 

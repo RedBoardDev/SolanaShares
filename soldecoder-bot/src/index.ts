@@ -14,6 +14,7 @@ import { positionSizeCommand } from '@presentation/commands/position-size.comman
 import { globalPositionsCommand } from '@presentation/commands/global-positions.command';
 import { startCommand } from '@presentation/commands/start.command';
 import { helpCommand } from '@presentation/commands/help.command';
+import { donateCommand } from '@presentation/commands/donate.command';
 import { InteractionRouter } from '@presentation/listeners/interactions/interaction-router';
 import { PositionDisplayScheduler } from '@infrastructure/services/position-display-scheduler.service';
 
@@ -29,6 +30,7 @@ async function registerSlashCommands(clientId: string, token: string) {
     positionSizeCommand.data.toJSON(),
     globalPositionsCommand.data.toJSON(),
     helpCommand.data.toJSON(),
+    donateCommand.data.toJSON(),
   ];
 
   try {
@@ -67,6 +69,9 @@ function wireInteractionHandler(client: Client) {
             break;
           case helpCommand.data.name:
             await helpCommand.execute(interaction);
+            break;
+          case donateCommand.data.name:
+            await donateCommand.execute(interaction);
             break;
           default:
             await interaction.reply({
@@ -116,7 +121,7 @@ async function main() {
 
     await registerSlashCommands(client.user!.id, config.discordToken);
 
-    // PositionDisplayScheduler.getInstance().start(client);
+    PositionDisplayScheduler.getInstance().start(client);
   });
 
   wireInteractionHandler(client);

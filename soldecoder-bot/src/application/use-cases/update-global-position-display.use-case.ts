@@ -1,10 +1,11 @@
-import type { Client, TextChannel, } from 'discord.js';
+import type { Client, TextChannel } from 'discord.js';
 import { ChannelType } from 'discord-api-types/v10';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import { DynamoGlobalMessageRepository } from '@infrastructure/repositories/dynamo-global-message.repository';
 import { parsePositionStatusMessage } from '@application/parsers/position-status.parser';
 import { buildGlobalPositionEmbed } from '@presentation/ui/embeds/global-position.embed';
+import { buildDonateButton } from '@presentation/ui/components/donate-button.component';
 import type { PositionStatus } from '@schemas/position-status.schema';
 import { logger } from '@helpers/logger';
 
@@ -35,67 +36,78 @@ export class UpdateGlobalPositionDisplayUseCase {
         return;
       }
 
-      const positionStatuses = await this.fetchPositionStatuses(client, channels.map(c => c.channelId));
+      const positionStatuses = await this.fetchPositionStatuses(
+        client,
+        channels.map((c) => c.channelId),
+      );
 
       const channelCreatedAtMap = new Map<string, number>();
-      channels.forEach(channel => {
+      channels.forEach((channel) => {
         channelCreatedAtMap.set(channel.channelId, channel.createdAt);
       });
 
       const positionsByWallet = this.groupPositionsByWallet(positionStatuses, channelCreatedAtMap);
 
       await this.updateGlobalMessage(client, guildId, guildSettings.globalChannelId, positionsByWallet);
-
     } catch (error) {
       logger.error('Failed to update global position display', error as Error, { guildId });
     }
   }
 
-  private async fetchPositionStatuses(client: Client, channelIds: string[]): Promise<{ position: PositionStatus; channelId: string }[]> {
-    const fetchTasks = channelIds.map(async (channelId): Promise<{ position: PositionStatus; channelId: string } | null> => {
-      try {
-        const channel = client.channels.cache.get(channelId);
-        if (!channel || channel.type !== ChannelType.GuildText) {
-          return null;
-        }
+  private async fetchPositionStatuses(
+    client: Client,
+    channelIds: string[],
+  ): Promise<{ position: PositionStatus; channelId: string }[]> {
+    const fetchTasks = channelIds.map(
+      async (channelId): Promise<{ position: PositionStatus; channelId: string } | null> => {
+        try {
+          const channel = client.channels.cache.get(channelId);
+          if (!channel || channel.type !== ChannelType.GuildText) {
+            return null;
+          }
 
-        const textChannel = channel as TextChannel;
-        const messages = await textChannel.messages.fetch({ limit: 1 });
-        const latestMessage = messages.first();
+          const textChannel = channel as TextChannel;
+          const messages = await textChannel.messages.fetch({ limit: 1 });
+          const latestMessage = messages.first();
 
-        if (!latestMessage) {
-          return null;
-        }
+          if (!latestMessage) {
+            return null;
+          }
 
-        const positionStatus = parsePositionStatusMessage(latestMessage.content);
-        if (positionStatus) {
-          logger.debug('Position status parsed successfully', {
+          const positionStatus = parsePositionStatusMessage(latestMessage.content);
+          if (positionStatus) {
+            logger.debug('Position status parsed successfully', {
+              channelId,
+              symbol: positionStatus.symbol,
+              wallet: positionStatus.wallet,
+            });
+          }
+
+          return positionStatus ? { position: positionStatus, channelId } : null;
+        } catch (error) {
+          logger.warn('Failed to fetch message from channel', {
             channelId,
-            symbol: positionStatus.symbol,
-            wallet: positionStatus.wallet
+            error: error instanceof Error ? error.message : String(error),
           });
+          return null;
         }
-
-        return positionStatus ? { position: positionStatus, channelId } : null;
-      } catch (error) {
-        logger.warn('Failed to fetch message from channel', {
-          channelId,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        return null;
-      }
-    });
+      },
+    );
 
     const results = await Promise.allSettled(fetchTasks);
 
     return results
-      .filter((result): result is PromiseFulfilledResult<{ position: PositionStatus; channelId: string }> =>
-        result.status === 'fulfilled' && result.value !== null
+      .filter(
+        (result): result is PromiseFulfilledResult<{ position: PositionStatus; channelId: string }> =>
+          result.status === 'fulfilled' && result.value !== null,
       )
-      .map(result => result.value);
+      .map((result) => result.value);
   }
 
-  private groupPositionsByWallet(positionData: { position: PositionStatus; channelId: string }[], channelCreatedAtMap: Map<string, number>): Map<string, PositionStatus[]> {
+  private groupPositionsByWallet(
+    positionData: { position: PositionStatus; channelId: string }[],
+    channelCreatedAtMap: Map<string, number>,
+  ): Map<string, PositionStatus[]> {
     const sortedPositionData = positionData.sort((a, b) => {
       const createdAtA = channelCreatedAtMap.get(a.channelId) || Date.now();
       const createdAtB = channelCreatedAtMap.get(b.channelId) || Date.now();
@@ -122,13 +134,11 @@ export class UpdateGlobalPositionDisplayUseCase {
     return sortedWallets;
   }
 
-
-
   private async updateGlobalMessage(
     client: Client,
     guildId: string,
     globalChannelId: string,
-    positionsByWallet: Map<string, PositionStatus[]>
+    positionsByWallet: Map<string, PositionStatus[]>,
   ): Promise<void> {
     try {
       const globalChannel = client.channels.cache.get(globalChannelId);
@@ -140,6 +150,7 @@ export class UpdateGlobalPositionDisplayUseCase {
       const textChannel = globalChannel as TextChannel;
 
       const embed = buildGlobalPositionEmbed(positionsByWallet);
+      const components = [buildDonateButton()];
 
       const existingMessageId = await this.globalMessageRepo.getGlobalMessageId(guildId);
 
@@ -151,10 +162,10 @@ export class UpdateGlobalPositionDisplayUseCase {
           const isLatest = latestMessages.first()?.id === existingMessageId;
 
           if (isLatest) {
-            await existingMessage.edit({ embeds: [embed] });
+            await existingMessage.edit({ embeds: [embed], components });
             return;
           } else {
-            await existingMessage.delete().catch(err => {
+            await existingMessage.delete().catch((err) => {
               logger.warn('Failed to delete old global message', { guildId, existingMessageId, error: err });
             });
           }
@@ -162,15 +173,14 @@ export class UpdateGlobalPositionDisplayUseCase {
           logger.debug('Existing global message not accessible, creating new one', {
             guildId,
             existingMessageId,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
 
-      const newMessage = await textChannel.send({ embeds: [embed] });
+      const newMessage = await textChannel.send({ embeds: [embed], components });
 
       await this.globalMessageRepo.saveGlobalMessage(guildId, newMessage.id);
-
     } catch (error) {
       logger.error('Failed to update global message', error as Error, { guildId, globalChannelId });
       throw error;

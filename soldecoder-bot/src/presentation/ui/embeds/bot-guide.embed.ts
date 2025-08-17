@@ -1,4 +1,5 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { buildDonateButton } from '@presentation/ui/components/donate-button.component';
 
 export function buildBotGuideEmbed(): EmbedBuilder {
   return new EmbedBuilder()
@@ -11,9 +12,9 @@ export function buildBotGuideEmbed(): EmbedBuilder {
           '• **Global Channel**: Where TP/SL forwards and position summaries appear',
           '• **Main Wallet**: Your primary Solana address for tracking',
           '• **Timezone**: For time-based reports and notifications',
-          '• **Stop Loss**: Default percentage for position sizing commands'
+          '• **Stop Loss**: Default percentage for position sizing commands',
         ].join('\n'),
-        inline: false
+        inline: false,
       },
       {
         name: '🔧 Server Settings (`/server-settings`)',
@@ -22,9 +23,9 @@ export function buildBotGuideEmbed(): EmbedBuilder {
           '• **Forward TP/SL**: Send take-profit/stop-loss alerts to global channel',
           '• **Auto-delete Warnings**: Automatically remove bot warning messages',
           '• **Position Size Defaults**: Update wallet address and stop loss % (useful for `/position-size` command)',
-          '• **Global Channel**: Change the main notification channel'
+          '• **Global Channel**: Change the main notification channel',
         ].join('\n'),
-        inline: false
+        inline: false,
       },
       {
         name: '📊 Channel Configuration (`/followed-channels`)',
@@ -36,9 +37,9 @@ export function buildBotGuideEmbed(): EmbedBuilder {
           '• **Threshold**: Set ±% change triggers for alerts',
           '• **Tags**: Mention specific users/roles on notifications',
           '',
-          '💡 **Tip**: Set the SolDecoder farmer notification interval to 1 minute for near real-time position tracking'
+          '💡 **Tip**: Set the SolDecoder farmer notification interval to 1 minute for near real-time position tracking',
         ].join('\n'),
-        inline: false
+        inline: false,
       },
       {
         name: '🚀 Key Features & Commands',
@@ -49,9 +50,9 @@ export function buildBotGuideEmbed(): EmbedBuilder {
           '• `/help` - Display this comprehensive guide anytime',
           '',
           '**Data Source**: All position stats and images come from **LPAgent API** (except for Position Display, which fetches directly from terminals to stay as close as possible to the farmer bot data)',
-          '**Real-time**: Bot monitors your channels and processes position messages automatically'
+          '**Real-time**: Bot monitors your channels and processes position messages automatically',
         ].join('\n'),
-        inline: false
+        inline: false,
       },
       {
         name: '⚡ Pro Tips for Users',
@@ -61,29 +62,29 @@ export function buildBotGuideEmbed(): EmbedBuilder {
           '• Use **Position Display** to get summaries in your global channel',
           '• Configure **Tags** to notify your team on important position changes',
           '• The bot automatically parses position data from LPAgent messages',
-          '• Use `/start` command to reconfigure your server settings anytime'
+          '• Use `/start` command to reconfigure your server settings anytime',
         ].join('\n'),
-        inline: false
-      }
+        inline: false,
+      },
     )
-    .setColor(0x00D966)
+    .setColor(0x00d966)
     .setFooter({ text: 'Need help? Use the buttons below to access settings!' });
 }
 
 export function buildBotGuideComponents(): ActionRowBuilder<any>[] {
   return [
-    new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('guide:view_settings')
-          .setLabel('View Server Settings')
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji('⚙️'),
-        new ButtonBuilder()
-          .setCustomId('guide:setup_channels')
-          .setLabel('Setup Channels')
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji('📝')
-      )
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('guide:view_settings')
+        .setLabel('View Server Settings')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('⚙️'),
+      new ButtonBuilder()
+        .setCustomId('guide:setup_channels')
+        .setLabel('Setup Channels')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('📝'),
+    ),
+    buildDonateButton(),
   ];
 }
