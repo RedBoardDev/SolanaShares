@@ -3,14 +3,22 @@
 A high-performance Discord bot for tracking Solana positions with real-time notifications, built with TypeScript and AWS DynamoDB.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2.2-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22-green.svg)](https://nodejs.org/)
 [![Discord.js](https://img.shields.io/badge/Discord.js-14.17.0-blue.svg)](https://discord.js.org/)
 [![AWS DynamoDB](https://img.shields.io/badge/AWS-DynamoDB-orange.svg)](https://aws.amazon.com/dynamodb/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+## ✨ Features
+
+- **Real-time Solana Position Tracking** - Monitor positions across multiple Discord channels
+- **Multi-Guild Support** - Manage up to 20 Discord servers simultaneously
+- **Smart Notifications** - Configurable alerts for position opens, closes, and updates
+- **Performance Optimized** - In-memory caching for sub-millisecond response times
+- **Clean Architecture** - Domain-driven design with clear separation of concerns
+- **AWS Serverless Ready** - Built for cloud deployment with DynamoDB integration
+
 ## 📋 Table of Contents
 
-- [Features](#-features)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
@@ -21,15 +29,6 @@ A high-performance Discord bot for tracking Solana positions with real-time noti
 - [Deployment](#-deployment)
 - [Contributing](#-contributing)
 - [License](#-license)
-
-## ✨ Features
-
-- **Real-time Solana Position Tracking** - Monitor positions across multiple Discord channels
-- **Multi-Guild Support** - Manage up to 20 Discord servers simultaneously
-- **Smart Notifications** - Configurable alerts for position opens, closes, and updates
-- **Performance Optimized** - In-memory caching for sub-millisecond response times
-- **Clean Architecture** - Domain-driven design with clear separation of concerns
-- **AWS Serverless Ready** - Built for cloud deployment with DynamoDB integration
 
 ## 🏗️ Architecture
 
@@ -58,8 +57,8 @@ The bot uses **AWS DynamoDB** with a single-table design optimized for Discord b
 
 ### Required Software
 
-- **Node.js** 18.0.0 or higher
-- **npm** 9.0.0 or higher (or **yarn** 1.22.0+)
+- **Node.js** 22.13.0
+- **npm** 11.0.0 or higher
 - **TypeScript** 5.2.2
 - **AWS CLI** (for database setup)
 
