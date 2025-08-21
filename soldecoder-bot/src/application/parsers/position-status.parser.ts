@@ -79,14 +79,6 @@ export function parsePositionStatusMessage(content: string): PositionStatus | nu
       status,
     };
 
-    logger.debug('Successfully parsed position status', {
-      symbol: positionStatus.symbol,
-      symbolShort: positionStatus.symbolShort,
-      wallet: positionStatus.wallet,
-      pnl: positionStatus.pnl,
-      claimedFees: positionStatus.claimedFees,
-    });
-
     return positionStatus;
   } catch (error) {
     logger.warn('Failed to parse position status message', {

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
+    "cleanup-commands": "tsx scripts/cleanup-slash-commands.ts",
     "format:check": "biome format . --diagnostic-level=error",
     "format:fix": "biome format --write ./src/**/*.tsx",
     "lint:check": "biome lint . --diagnostic-level=error",

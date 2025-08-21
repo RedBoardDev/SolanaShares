@@ -1,13 +1,11 @@
 import { Client, GatewayIntentBits, MessageFlags } from 'discord.js';
-import { REST } from '@discordjs/rest';
-import { Routes } from 'discord-api-types/v10';
-
 import { logger } from '@helpers/logger';
 import { setupErrorHandler } from '@helpers/error-handler';
 import { config } from '@infrastructure/config/env';
 import { CacheInitializerService } from '@infrastructure/services/cache-initializer.service';
 import { WalletSchedulerService } from '@infrastructure/services/wallet-scheduler.service';
 import { OnChainSchedulerService } from '@infrastructure/services/onchain-scheduler.service';
+import { CommandManagerService } from '@infrastructure/services/command-manager.service';
 import { InteractionRouter } from '@presentation/listeners/interactions/interaction-router';
 import { linkWalletCommand } from '@presentation/commands/link-wallet.command';
 import { depositCommand } from '@presentation/commands/deposit.command';
@@ -17,55 +15,37 @@ import { syncCommand } from '@presentation/commands/force-sync.command';
 
 const DISCORD_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent];
 
-async function registerSlashCommands(clientId: string, token: string) {
-  const rest = new REST({ version: '10' }).setToken(token);
-  const payload = [
-    linkWalletCommand.data.toJSON(),
-    depositCommand.data.toJSON(),
-    walletCommand.data.toJSON(),
-    participantsCommand.data.toJSON(),
-    syncCommand.data.toJSON(),
-  ];
+function setupCommands(): CommandManagerService {
+  const commandManager = CommandManagerService.getInstance();
 
-  try {
-    await rest.put(Routes.applicationCommands(clientId), { body: payload });
-    logger.info('✅ Registered slash commands');
-  } catch (err: unknown) {
-    logger.error('Failed to register slash commands', err instanceof Error ? err : new Error(String(err)));
-    throw err;
-  }
+  // Register all commands with the manager
+  commandManager.registerCommand(linkWalletCommand);
+  commandManager.registerCommand(depositCommand);
+  commandManager.registerCommand(walletCommand);
+  commandManager.registerCommand(participantsCommand);
+  commandManager.registerCommand(syncCommand);
+
+  return commandManager;
 }
 
-function wireInteractionHandler(client: Client) {
+function wireInteractionHandler(client: Client, commandManager: CommandManagerService) {
   const interactionRouter = InteractionRouter.getInstance();
 
   client.on('interactionCreate', async (interaction) => {
     try {
       if (interaction.isChatInputCommand()) {
-        switch (interaction.commandName) {
-          case linkWalletCommand.data.name:
-            await linkWalletCommand.execute(interaction);
-            break;
-          case depositCommand.data.name:
-            await depositCommand.execute(interaction);
-            break;
-          case walletCommand.data.name:
-            await walletCommand.execute(interaction);
-            break;
-          case participantsCommand.data.name:
-            await participantsCommand.execute(interaction);
-            break;
-          case 'force-sync':
-            await syncCommand.execute(interaction);
-            break;
-          default:
-            await interaction.reply({
-              content: 'Unknown command',
-              flags: MessageFlags.Ephemeral,
-            });
+        const command = commandManager.getCommand(interaction.commandName);
+
+        if (command) {
+          await command.execute(interaction);
+        } else {
+          logger.warn(`Unknown command: ${interaction.commandName}`);
+          await interaction.reply({
+            content: 'Unknown command',
+            flags: MessageFlags.Ephemeral,
+          });
         }
       } else {
-        // Router les autres interactions (boutons, dropdowns, modals)
         await interactionRouter.routeInteraction(interaction);
       }
     } catch (error) {
@@ -74,19 +54,12 @@ function wireInteractionHandler(client: Client) {
   });
 }
 
-function wireAdditionalListeners(_client: Client) {}
-
 function setupShutdownHooks(client: Client) {
   const shutdown = async () => {
     logger.info('Graceful shutdown initiated');
     try {
-      const walletScheduler = WalletSchedulerService.getInstance();
-      walletScheduler.stopScheduler();
-      logger.info('Wallet scheduler stopped');
-
-      const onchainScheduler = OnChainSchedulerService.getInstance();
-      onchainScheduler.stopScheduler();
-      logger.info('On-chain scheduler stopped');
+      WalletSchedulerService.getInstance().stopScheduler();
+      OnChainSchedulerService.getInstance().stopScheduler();
 
       await client.destroy();
       logger.info('Discord client destroyed');
@@ -104,35 +77,51 @@ function setupShutdownHooks(client: Client) {
 async function main() {
   logger.info('Initializing bot');
   setupErrorHandler();
+
   const cacheInitializer = new CacheInitializerService();
   await cacheInitializer.initializeCache();
 
-  logger.info('Starting wallet scheduler');
-  const walletScheduler = WalletSchedulerService.getInstance();
-  walletScheduler.startScheduler();
-
-  const onchainScheduler = OnChainSchedulerService.getInstance();
-  onchainScheduler.startScheduler();
+  const commandManager = setupCommands();
 
   const client = new Client({ intents: DISCORD_INTENTS });
 
   client.once('ready', async () => {
-  const app = await client.application?.fetch();
-  const clientId = app?.id ?? client.user?.id;
-  if (!clientId) {
-    logger.error('Unable to resolve application clientId for slash registration');
-    return;
-  }
+    logger.info(`🤖 Bot logged in as ${client.user?.tag}`);
 
-  await registerSlashCommands(clientId, config.discordToken);
-  logger.info('Slash commands registered');
-});
+    WalletSchedulerService.getInstance().startScheduler();
+    OnChainSchedulerService.getInstance().startScheduler();
 
-  wireInteractionHandler(client);
-  wireAdditionalListeners(client);
+    try {
+      // Smart command synchronization - only updates what's changed
+      await commandManager.syncCommands(client);
+      logger.info('✅ Commands synchronized successfully');
+    } catch (error) {
+      logger.error('❌ Failed to synchronize commands', error as Error);
+
+      // Fallback: force register all commands
+      try {
+        logger.info('🔄 Attempting fallback: force register all commands...');
+        await commandManager.forceRegisterAll(client);
+        logger.info('✅ Fallback command registration successful');
+      } catch (fallbackError) {
+        logger.error('❌ Fallback command registration also failed', fallbackError as Error);
+        process.exit(1);
+      }
+    }
+  });
+
+  wireInteractionHandler(client, commandManager);
+
   client.on('error', (error) => { logger.error('Discord client error', error); });
+
   setupShutdownHooks(client);
-  await client.login(config.discordToken);
+
+  try {
+    await client.login(config.discordToken);
+  } catch (err: unknown) {
+    logger.fatal('Failed to login to Discord', err instanceof Error ? err : new Error(String(err)));
+    process.exit(1);
+  }
 }
 
 main().catch((err: unknown) => {
