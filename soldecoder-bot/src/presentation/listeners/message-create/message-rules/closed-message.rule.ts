@@ -59,7 +59,7 @@ export class ClosedMessageRule implements MessageRule {
 
   public async execute(message: Message): Promise<void> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await new Promise((resolve) => setTimeout(resolve, 6000));
 
       // Step 1: Parse Metlex message to get wallet prefix and position hashes
       const data = parseMetlexMessage(message.content);
@@ -71,7 +71,7 @@ export class ClosedMessageRule implements MessageRule {
       const { walletPrefix, positionHashes } = data;
       logger.debug('Metlex data extracted', {
         walletPrefix,
-        hashCount: positionHashes.length
+        hashCount: positionHashes.length,
       });
 
       const channelConfig = await this.channelRepo.getByChannelId(message.channelId);
@@ -101,13 +101,15 @@ export class ClosedMessageRule implements MessageRule {
         logger.debug('Wallet address extracted from transaction signer', {
           signature: firstSignature,
           walletAddress,
-          walletPrefix
+          walletPrefix,
         });
       } catch (error) {
         logger.error('Failed to extract wallet address from transaction signer', error as Error, {
-          signature: transactionSignatures[0]
+          signature: transactionSignatures[0],
         });
-        throw new Error(`Failed to get wallet address from transaction: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to get wallet address from transaction: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
 
       // Step 3: Get historical positions from LpAgent API (page 1, limit 1 for latest)
@@ -127,9 +129,8 @@ export class ClosedMessageRule implements MessageRule {
 
         logger.debug('Position data mapped successfully', {
           positionAddress: aggregatedPosition.metadata.address,
-          pnlPercentage: aggregatedPosition.performance.pnl_percentage
+          pnlPercentage: aggregatedPosition.performance.pnl_percentage,
         });
-
       } catch (error) {
         logger.error('Failed to fetch or map historical position data', error as Error);
 
@@ -146,25 +147,29 @@ export class ClosedMessageRule implements MessageRule {
         throw error;
       }
 
-              // Step 5: Check PnL threshold
+      // Step 5: Check PnL threshold
       if (Math.abs(aggregatedPosition.performance.pnl_percentage) < channelConfig.threshold) {
         logger.debug('PnL below threshold, not sending message', {
           pnl: aggregatedPosition.performance.pnl_percentage,
-          threshold: channelConfig.threshold
+          threshold: channelConfig.threshold,
         });
         return;
       }
 
       // Step 6: Send the message as before
       const mentionData = this.prepareMention(channelConfig);
-      const preparedContent = await this.prepareContent(message, aggregatedPosition, mentionData.mention, channelConfig);
+      const preparedContent = await this.prepareContent(
+        message,
+        aggregatedPosition,
+        mentionData.mention,
+        channelConfig,
+      );
 
       await this.sendPositionMessage(message, preparedContent, mentionData.allowedMentions, channelConfig);
 
       if (preparedContent.triggerData && message.guildId) {
         await this.sendToGlobalChannelIfEnabled(message, preparedContent.contentBody, message.guildId);
       }
-
     } catch (err) {
       logger.error('closed-message rule failed', err instanceof Error ? err : new Error(String(err)));
 
@@ -230,16 +235,14 @@ export class ClosedMessageRule implements MessageRule {
     message: Message,
     aggregatedPosition: FinalPositionData,
     mention: string | null,
-    channelConfig: ChannelConfigEntity
+    channelConfig: ChannelConfigEntity,
   ): Promise<PreparedContent> {
     let contentBody: string;
     let triggerData: TriggerData | null = null;
 
     const previousMessage = await getPreviousMessage(message);
 
-    triggerData = previousMessage
-      ? parseTriggerMessage(previousMessage.content)
-      : null;
+    triggerData = previousMessage ? parseTriggerMessage(previousMessage.content) : null;
 
     if (triggerData) {
       logger.debug('Trigger detected', { type: triggerData.type });
@@ -268,7 +271,7 @@ export class ClosedMessageRule implements MessageRule {
     message: Message,
     preparedContent: PreparedContent,
     allowedMentions: { users?: string[]; roles?: string[] } | undefined,
-    channelConfig: ChannelConfigEntity
+    channelConfig: ChannelConfigEntity,
   ): Promise<void> {
     const channel = message.channel as TextChannel;
 
@@ -300,7 +303,7 @@ export class ClosedMessageRule implements MessageRule {
   private async sendToGlobalChannelIfEnabled(
     originalMessage: Message,
     contentBody: string,
-    guildId: string
+    guildId: string,
   ): Promise<void> {
     try {
       const guildSettings = await this.guildRepo.getByGuildId(guildId);
@@ -315,7 +318,7 @@ export class ClosedMessageRule implements MessageRule {
       if (!globalChannel || !globalChannel.isSendable()) {
         logger.warn('Global channel not found or not sendable', {
           guildId,
-          globalChannelId: guildSettings.globalChannelId
+          globalChannelId: guildSettings.globalChannelId,
         });
         return;
       }
@@ -323,7 +326,6 @@ export class ClosedMessageRule implements MessageRule {
       await globalChannel.send({
         content: contentBody,
       });
-
     } catch (error) {
       logger.error('Failed to send message to global channel', error as Error, { guildId });
     }

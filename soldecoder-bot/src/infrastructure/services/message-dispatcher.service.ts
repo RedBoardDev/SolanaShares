@@ -60,7 +60,10 @@ export class MessageDispatcherService implements MessageDispatcher {
             }
           }
         } catch (error) {
-          logger.error(`Error executing rule "${rule.name}"`, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            `Error executing rule "${rule.name}"`,
+            error instanceof Error ? error : new Error(String(error)),
+          );
         }
       }
     } catch (error) {

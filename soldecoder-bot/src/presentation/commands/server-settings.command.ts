@@ -42,7 +42,7 @@ export const serverSettingsCommand = {
 
         await interaction.editReply({
           embeds: [embed],
-          components: components
+          components: components,
         });
       },
     });
