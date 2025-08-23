@@ -5,6 +5,7 @@ import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dyna
 import { DynamoGlobalMessageRepository } from '@infrastructure/repositories/dynamo-global-message.repository';
 import { parsePositionStatusMessage } from '@application/parsers/position-status.parser';
 import { buildGlobalPositionEmbed } from '@presentation/ui/embeds/global-position.embed';
+import { buildDonateButton } from '@presentation/ui/components/donate-button.component';
 import type { PositionStatus } from '@schemas/position-status.schema';
 import { logger } from '@helpers/logger';
 import * as crypto from 'crypto';
@@ -77,7 +78,7 @@ export class UpdateGlobalPositionDisplayUseCase {
       });
 
       const channelCreatedAtMap = new Map<string, number>();
-      channels.forEach(channel => {
+      channels.forEach((channel) => {
         channelCreatedAtMap.set(channel.channelId, channel.createdAt);
       });
 
@@ -121,9 +122,9 @@ export class UpdateGlobalPositionDisplayUseCase {
           return null;
         }
 
-        const textChannel = channel as TextChannel;
-        const messages = await textChannel.messages.fetch({ limit: 1 });
-        const latestMessage = messages.first();
+          const textChannel = channel as TextChannel;
+          const messages = await textChannel.messages.fetch({ limit: 1 });
+          const latestMessage = messages.first();
 
         if (!latestMessage) {
           logger.debug('No messages found in channel', {
@@ -193,7 +194,10 @@ export class UpdateGlobalPositionDisplayUseCase {
     return successful.map(result => result.value!);
   }
 
-  private groupPositionsByWallet(positionData: { position: PositionStatus; channelId: string }[], channelCreatedAtMap: Map<string, number>): Map<string, PositionStatus[]> {
+  private groupPositionsByWallet(
+    positionData: { position: PositionStatus; channelId: string }[],
+    channelCreatedAtMap: Map<string, number>,
+  ): Map<string, PositionStatus[]> {
     const sortedPositionData = positionData.sort((a, b) => {
       const createdAtA = channelCreatedAtMap.get(a.channelId) || Date.now();
       const createdAtB = channelCreatedAtMap.get(b.channelId) || Date.now();
@@ -220,13 +224,11 @@ export class UpdateGlobalPositionDisplayUseCase {
     return sortedWallets;
   }
 
-
-
   private async updateGlobalMessage(
     client: Client,
     guildId: string,
     globalChannelId: string,
-    positionsByWallet: Map<string, PositionStatus[]>
+    positionsByWallet: Map<string, PositionStatus[]>,
   ): Promise<void> {
     try {
       const globalChannel = client.channels.cache.get(globalChannelId);

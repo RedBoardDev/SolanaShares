@@ -11,6 +11,7 @@ import { positionSizeCommand } from '@presentation/commands/position-size.comman
 import { globalPositionsCommand } from '@presentation/commands/global-positions.command';
 import { startCommand } from '@presentation/commands/start.command';
 import { helpCommand } from '@presentation/commands/help.command';
+import { donateCommand } from '@presentation/commands/donate.command';
 import { InteractionRouter } from '@presentation/listeners/interactions/interaction-router';
 import { PositionDisplayScheduler } from '@infrastructure/services/position-display-scheduler.service';
 import { CommandManagerService } from '@infrastructure/services/command-manager.service';
@@ -28,6 +29,7 @@ function setupCommands(): CommandManagerService {
   commandManager.registerCommand(serverSettingsCommand);
   commandManager.registerCommand(positionSizeCommand);
   commandManager.registerCommand(globalPositionsCommand);
+  commandManager.registerCommand(donateCommand);
 
   return commandManager;
 }
