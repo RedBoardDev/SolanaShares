@@ -2,7 +2,7 @@
  * Generic cache service interface for key-value storage with TTL support.
  * This service should be domain-agnostic and reusable across projects.
  */
-export interface GenericCacheService {
+export interface IGenericCacheService {
   /**
    * Retrieves a value from cache by key.
    * @param key The cache key

@@ -1,4 +1,4 @@
-import type { GenericCacheService } from '@domain/interfaces/generic-cache.service.interface';
+import type { IGenericCacheService } from '@domain/interfaces/generic-cache.service.interface';
 import { logger } from '@helpers/logger';
 
 interface CacheEntry<T> {
@@ -12,7 +12,7 @@ interface CacheEntry<T> {
  * Domain-agnostic key-value storage with TTL support.
  * Can be used in any project without modifications.
  */
-export class GenericCacheServiceImpl implements GenericCacheService {
+export class GenericCacheServiceImpl implements IGenericCacheService {
   private static instance: GenericCacheServiceImpl;
   private readonly cache = new Map<string, CacheEntry<unknown>>();
   private readonly defaultTtlMs: number;
