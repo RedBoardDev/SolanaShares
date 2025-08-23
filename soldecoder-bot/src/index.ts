@@ -3,7 +3,7 @@ import { logger } from '@helpers/logger';
 import { registerMessageDispatcherListener } from '@presentation/listeners/message-create/message-dispatcher.listener';
 import { setupErrorHandler } from '@helpers/error-handler';
 import { config } from '@infrastructure/config/env';
-import { CacheInitializerService } from '@infrastructure/services/cache-initializer.service';
+import { CacheService } from '@infrastructure/services/cache.service';
 import { followedChannelsCommand } from '@presentation/commands/channels.command';
 import { serverSettingsCommand } from '@presentation/commands/server-settings.command';
 import { nftPriceCommand } from '@presentation/commands/nft-price.command';
@@ -83,8 +83,8 @@ async function main() {
   logger.info('Initializing bot');
   setupErrorHandler();
 
-  const cacheInitializer = new CacheInitializerService();
-  await cacheInitializer.initializeCache();
+  const cacheService = CacheService.getInstance();
+  await cacheService.initialize();
 
   const commandManager = setupCommands();
 
@@ -117,7 +117,9 @@ async function main() {
   wireInteractionHandler(client, commandManager);
   registerMessageDispatcherListener(client);
 
-  client.on('error', (error) => { logger.error('Discord client error', error); });
+  client.on('error', (error) => {
+    logger.error('Discord client error', error);
+  });
 
   setupShutdownHooks(client);
 
