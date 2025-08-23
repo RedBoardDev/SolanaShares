@@ -1,5 +1,5 @@
 import type { LpAgentService as ILpAgentService } from '@domain/interfaces/lpagent.service.interface';
-import { type LpAgentResponse, LpAgentResponseSchema, type LpAgentOverviewResponse, LpAgentOverviewResponseSchema } from '@schemas/lpagent.schema';
+import { type LpAgentResponse, LpAgentResponseSchema, type LpAgentOverviewResponse, LpAgentOverviewResponseSchema, type LpAgentHistoricalResponse, LpAgentHistoricalResponseSchema } from '@schemas/lpagent.schema';
 import type { z } from 'zod';
 import { RateLimiter } from './rate-limiter.service';
 import { config } from '@infrastructure/config/env';
@@ -36,6 +36,18 @@ export class LpAgentService implements ILpAgentService {
   public async getOverview(): Promise<LpAgentOverviewResponse> {
     return this.rateLimiter.enqueue(async () => {
       return this.fetchWithRetry('/lp-positions/overview?protocol=meteora', LpAgentOverviewResponseSchema);
+    });
+  }
+
+  public async getHistoricalPositions(ownerWalletAddress: string, page = 1, limit = 20): Promise<LpAgentHistoricalResponse> {
+    return this.rateLimiter.enqueue(async () => {
+      const params = new URLSearchParams();
+      params.append('owner', ownerWalletAddress);
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+
+      const endpoint = `/lp-positions/historical?${params.toString()}`;
+      return this.fetchWithRetry(endpoint, LpAgentHistoricalResponseSchema, 1);
     });
   }
 
