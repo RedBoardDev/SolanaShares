@@ -9,7 +9,7 @@ interface CacheEntry<T> {
 
 export class CacheService {
   private static instance: CacheService;
-  private readonly TTL_MS = 30 * 60_000;
+  private readonly TTL_MS = 15 * 60_000;
 
   private participantCache = new Map<string, CacheEntry<ParticipantEntity>>();
   private participantByDiscordUserCache = new Map<string, string>();

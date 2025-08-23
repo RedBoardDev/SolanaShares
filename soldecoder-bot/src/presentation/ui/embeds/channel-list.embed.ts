@@ -104,8 +104,14 @@ export function buildChannelListComponents(channels: ChannelConfigEntity[], allG
   }
 
   if (showRemoveDropdown && channels.length > 0) {
-    const removeDropdownRow = buildChannelRemoveSelectComponent(channels, allGuildChannels);
-    components.push(removeDropdownRow);
+    try {
+      const removeDropdownRow = buildChannelRemoveSelectComponent(channels, allGuildChannels);
+      components.push(removeDropdownRow);
+    } catch (error) {
+      // If we can't build the remove dropdown, just skip it
+      // This prevents the entire interaction from failing
+      console.warn('Failed to build remove dropdown component:', error);
+    }
   }
 
   if (channels.length > 0) {
