@@ -1,19 +1,36 @@
 import type { Client } from 'discord.js';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
-import { UpdateGlobalPositionDisplayUseCase } from '@application/use-cases/update-global-position-display.use-case';
+import { PositionUpdateQueueService } from '@infrastructure/services/position-update-queue.service';
 import { logger } from '@helpers/logger';
 
+/**
+ * Optimized scheduling service for position updates.
+ * Uses a queue system to efficiently manage updates across 50+ guilds.
+ */
 export class PositionDisplayScheduler {
   private static instance: PositionDisplayScheduler;
   private readonly guildRepo: DynamoGuildSettingsRepository;
-  private readonly updateGlobalUC: UpdateGlobalPositionDisplayUseCase;
+  private readonly updateQueue: PositionUpdateQueueService;
   private interval: NodeJS.Timeout | null = null;
-  private isTicking = false;
+  private isRunning = false;
+
   private readonly INTERVAL_MS = 30_000;
+  private readonly INITIAL_DELAY_MS = 5_000;
+  /**
+   * Batch priorities for guilds based on activity status.
+   * ACTIVE: Guilds with recent messages
+   * NORMAL: Regular guilds
+   * INACTIVE: Inactive guilds
+   */
+  private readonly BATCH_PRIORITY = {
+    ACTIVE: 10,
+    NORMAL: 5,
+    INACTIVE: 1,
+  };
 
   private constructor() {
     this.guildRepo = new DynamoGuildSettingsRepository();
-    this.updateGlobalUC = new UpdateGlobalPositionDisplayUseCase();
+    this.updateQueue = PositionUpdateQueueService.getInstance();
   }
 
   static getInstance(): PositionDisplayScheduler {
@@ -24,14 +41,19 @@ export class PositionDisplayScheduler {
   }
 
   start(client: Client): void {
-    if (this.interval) {
+    if (this.isRunning) {
       logger.warn('PositionDisplayScheduler already running');
       return;
     }
 
-    this.interval = setInterval(() => this.tick(client), this.INTERVAL_MS);
-    setTimeout(() => this.tick(client), 5_000);
-    logger.info(`PositionDisplayScheduler started every ${this.INTERVAL_MS / 1000}s`);
+    this.isRunning = true;
+    this.updateQueue.initialize(client);
+
+    setTimeout(() => this.tick(), this.INITIAL_DELAY_MS);
+
+    this.interval = setInterval(() => this.tick(), this.INTERVAL_MS);
+
+    logger.info(`PositionDisplayScheduler started (interval: ${this.INTERVAL_MS / 1000}s)`);
   }
 
   stop(): void {
@@ -39,38 +61,77 @@ export class PositionDisplayScheduler {
       clearInterval(this.interval);
       this.interval = null;
     }
+
+    this.isRunning = false;
+    this.updateQueue.clear();
+
+    logger.info('PositionDisplayScheduler stopped');
   }
 
-  private async tick(client: Client): Promise<void> {
-    if (this.isTicking) {
-      logger.debug('PositionDisplayScheduler tick skipped (previous tick still running)');
-      return;
-    }
-    this.isTicking = true;
-
+  private async tick(): Promise<void> {
     try {
-      const guilds = await this.guildRepo.getAllGuilds();
-      const eligible = guilds.filter(g => g.positionDisplayEnabled && !!g.globalChannelId);
+      const startTime = Date.now();
 
-      logger.debug('PositionDisplayScheduler tick', {
+      const guilds = await this.guildRepo.getAllGuilds();
+      const eligible = guilds.filter((g) => g.positionDisplayEnabled && g.globalChannelId && g.guildId);
+
+      if (eligible.length === 0) {
+        return;
+      }
+
+      const sortedGuilds = this.prioritizeGuilds(eligible);
+
+      for (const { guild, priority } of sortedGuilds) {
+        this.updateQueue.enqueue(guild.guildId, priority);
+      }
+
+      const stats = this.updateQueue.getStats();
+      const duration = Date.now() - startTime;
+
+      logger.info('PositionDisplayScheduler tick completed', {
         totalGuilds: guilds.length,
         eligible: eligible.length,
+        queued: sortedGuilds.length,
+        queueStats: stats,
+        tickDuration: duration,
       });
-
-      for (const g of eligible) {
-        try {
-          await this.updateGlobalUC.execute(g.guildId, client);
-        } catch (error) {
-          logger.warn('Failed to update global position display for guild', {
-            guildId: g.guildId,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
     } catch (error) {
       logger.error('PositionDisplayScheduler tick failed', error as Error);
-    } finally {
-      this.isTicking = false;
     }
+  }
+
+  private prioritizeGuilds(
+    guilds: Array<{ guildId: string; positionDisplayEnabled: boolean; globalChannelId: string | null }>,
+  ): Array<{
+    guild: { guildId: string; positionDisplayEnabled: boolean; globalChannelId: string | null };
+    priority: number;
+  }> {
+    return guilds.map((guild) => {
+      const priority = this.BATCH_PRIORITY.NORMAL;
+
+      return { guild, priority };
+    });
+  }
+
+  forceUpdate(guildId: string, priority: number = this.BATCH_PRIORITY.ACTIVE): void {
+    if (!this.isRunning) {
+      logger.warn('Cannot force update - scheduler not running');
+      return;
+    }
+
+    this.updateQueue.enqueue(guildId, priority);
+    logger.info('Forced update queued', { guildId, priority });
+  }
+
+  getStatus(): {
+    isRunning: boolean;
+    intervalMs: number;
+    queueStats: ReturnType<PositionUpdateQueueService['getStats']>;
+  } {
+    return {
+      isRunning: this.isRunning,
+      intervalMs: this.INTERVAL_MS,
+      queueStats: this.updateQueue.getStats(),
+    };
   }
 }

@@ -1,19 +1,18 @@
 import type { PositionStatus } from '@schemas/position-status.schema';
 import { EmbedBuilder } from 'discord.js';
+import { naturalSortMap, naturalSortBy } from '@helpers/natural-sort';
 
 export function buildGlobalPositionEmbed(
-	positionsByWallet: Map<string, PositionStatus[]>,
-	options?: { percentOnly?: boolean; footerText?: string, updateId?: string },
+  positionsByWallet: Map<string, PositionStatus[]>,
+  options?: { percentOnly?: boolean; footerText?: string; updateId?: string },
 ): EmbedBuilder {
-	const embed = new EmbedBuilder()
-		.setTitle("📊 Position overview")
-		.setColor(0x5865f2)
-		.setTimestamp()
-		.setFooter({
-			text:
-				(options?.footerText ?? "Every 1 minute - ") +
-				(options?.updateId ? options.updateId : "")
-		});
+  const embed = new EmbedBuilder()
+    .setTitle('📊 Position overview')
+    .setColor(0x5865f2)
+    .setTimestamp()
+    .setFooter({
+      text: (options?.footerText ?? 'Every 1 minute - ') + (options?.updateId ? options.updateId : ''),
+    });
 
   if (positionsByWallet.size === 0) {
     embed.setDescription('No active positions found in followed channels.');
@@ -24,10 +23,14 @@ export function buildGlobalPositionEmbed(
   let totalPositions = 0;
   let totalPnL = 0;
 
-  for (const [walletName, positions] of positionsByWallet) {
+  const sortedPositionsByWallet = naturalSortMap(positionsByWallet);
+
+  for (const [walletName, positions] of sortedPositionsByWallet) {
     totalPositions += positions.length;
 
-    const walletField = positions
+    const sortedPositions = naturalSortBy(positions, (pos) => pos.symbolShort);
+
+    const walletField = sortedPositions
       .map((pos) => {
         totalPnL += pos.pnl;
         const icon = getStatusIcon(pos.status);
