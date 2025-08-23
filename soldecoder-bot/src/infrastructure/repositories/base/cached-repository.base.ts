@@ -8,7 +8,7 @@ import { logger } from '@helpers/logger';
 export abstract class CachedRepositoryBase implements ICachedRepositoryBase {
   public readonly cache: IGenericCacheService;
   public readonly databaseService: DatabaseService;
-  public readonly defaultTtlMs = 30 * 1 * 1000; // 30 minutes
+  public readonly defaultTtlMs = 30 * 60 * 1000; // 30 minutes
 
   constructor() {
     this.cache = GenericCacheServiceImpl.getInstance();
