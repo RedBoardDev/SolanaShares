@@ -3,8 +3,8 @@ import type { MessageRule } from '@domain/interfaces/message-rule.interface';
 import { logger } from '@helpers/logger';
 import { ChannelType } from 'discord-api-types/v10';
 import { parseMetlexMessage } from '@application/parsers/metlex-message.parser';
-import { PositionFetcher } from '@infrastructure/services/position-fetcher.service';
-import { aggregatePositions, computePositions } from '@infrastructure/helpers/compute-positions';
+// import { PositionFetcher } from '@infrastructure/services/position-fetcher.service';
+// import { aggregatePositions, computePositions } from '@infrastructure/helpers/compute-positions';
 import { getPreviousMessage } from '@infrastructure/helpers/get-previous-message';
 import type { FinalPositionData } from '@schemas/final-position.schema';
 import type { TriggerData } from '@schemas/trigger-message.schema';
@@ -16,6 +16,9 @@ import { buildTriggeredMessage } from '@presentation/ui/position/build-triggered
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import type { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
+import { LpAgentService } from '@infrastructure/services/lpagent.service';
+import { SolanaWeb3Service } from '@infrastructure/services/solanaweb3.service';
+import { mapLpAgentToFinalPosition } from '@application/mappers/lpagent-to-final-position.mapper';
 
 interface PreparedContent {
   contentBody: string;
@@ -29,7 +32,6 @@ interface MentionData {
   allowedMentions: { users?: string[]; roles?: string[] } | undefined;
 }
 
-// TODO replace by lp agent call to get the position data
 export class ClosedMessageRule implements MessageRule {
   public readonly id = 'closed-message';
   public readonly name = 'Closed Message Handler';
@@ -37,10 +39,14 @@ export class ClosedMessageRule implements MessageRule {
 
   private readonly channelRepo: DynamoChannelConfigRepository;
   private readonly guildRepo: DynamoGuildSettingsRepository;
+  private readonly lpAgentService: LpAgentService;
+  private readonly solanaService: SolanaWeb3Service;
 
   constructor() {
     this.channelRepo = new DynamoChannelConfigRepository();
     this.guildRepo = new DynamoGuildSettingsRepository();
+    this.lpAgentService = LpAgentService.getInstance();
+    this.solanaService = SolanaWeb3Service.getInstance();
   }
 
   public matches(message: Message): boolean {
@@ -53,7 +59,9 @@ export class ClosedMessageRule implements MessageRule {
 
   public async execute(message: Message): Promise<void> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 30000));
+      await new Promise(resolve => setTimeout(resolve, 6000));
+
+      // Step 1: Parse Metlex message to get wallet prefix and position hashes
       const data = parseMetlexMessage(message.content);
       if (!data) {
         logger.debug('No data extracted from message, returning');
@@ -61,7 +69,10 @@ export class ClosedMessageRule implements MessageRule {
       }
 
       const { walletPrefix, positionHashes } = data;
-      logger.debug('Data extracted', { walletPrefix, hashCount: positionHashes.length });
+      logger.debug('Metlex data extracted', {
+        walletPrefix,
+        hashCount: positionHashes.length
+      });
 
       const channelConfig = await this.channelRepo.getByChannelId(message.channelId);
       if (!channelConfig) {
@@ -74,11 +85,68 @@ export class ClosedMessageRule implements MessageRule {
         return;
       }
 
-      const fetcher = PositionFetcher.getInstance();
-      const positions = await fetcher.fetchPositions(positionHashes);
-      const computedPositions = await computePositions(positions);
-      const aggregatedPosition = aggregatePositions(computedPositions);
+      // Step 2: Extract transaction signatures from message content and get wallet address via signer
+      const transactionSignatures = this.extractTransactionSignatures(message.content);
+      if (transactionSignatures.length === 0) {
+        logger.error('No transaction signatures found in message content');
+        throw new Error('No transaction signatures found to determine wallet address');
+      }
 
+      let walletAddress: string;
+      try {
+        // Use the first transaction signature to get the signer (wallet owner)
+        const firstSignature = transactionSignatures[0];
+        walletAddress = await this.solanaService.getTransactionSigner(firstSignature);
+
+        logger.debug('Wallet address extracted from transaction signer', {
+          signature: firstSignature,
+          walletAddress,
+          walletPrefix
+        });
+      } catch (error) {
+        logger.error('Failed to extract wallet address from transaction signer', error as Error, {
+          signature: transactionSignatures[0]
+        });
+        throw new Error(`Failed to get wallet address from transaction: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      // Step 3: Get historical positions from LpAgent API (page 1, limit 1 for latest)
+      let aggregatedPosition: FinalPositionData;
+
+      try {
+        const historicalResponse = await this.lpAgentService.getHistoricalPositions(walletAddress, 1, 1);
+
+        if (!historicalResponse.data.data || historicalResponse.data.data.length === 0) {
+          logger.debug('No historical positions found for wallet', { wallet: walletAddress });
+          return;
+        }
+
+        // Step 4: Map LpAgent response to FinalPositionData using our mapper
+        const latestPosition = historicalResponse.data.data[0];
+        aggregatedPosition = mapLpAgentToFinalPosition(latestPosition);
+
+        logger.debug('Position data mapped successfully', {
+          positionAddress: aggregatedPosition.metadata.address,
+          pnlPercentage: aggregatedPosition.performance.pnl_percentage
+        });
+
+      } catch (error) {
+        logger.error('Failed to fetch or map historical position data', error as Error);
+
+        // Fallback to old method if LpAgent fails
+        logger.debug('Falling back to old position fetching method');
+
+        // FALLBACK: Keep old method as backup (commented for now)
+        // const fetcher = PositionFetcher.getInstance();
+        // const positions = await fetcher.fetchPositions(positionHashes);
+        // const computedPositions = await computePositions(positions);
+        // aggregatedPosition = aggregatePositions(computedPositions);
+
+        // For now, just return on error
+        throw error;
+      }
+
+              // Step 5: Check PnL threshold
       if (Math.abs(aggregatedPosition.performance.pnl_percentage) < channelConfig.threshold) {
         logger.debug('PnL below threshold, not sending message', {
           pnl: aggregatedPosition.performance.pnl_percentage,
@@ -87,6 +155,7 @@ export class ClosedMessageRule implements MessageRule {
         return;
       }
 
+      // Step 6: Send the message as before
       const mentionData = this.prepareMention(channelConfig);
       const preparedContent = await this.prepareContent(message, aggregatedPosition, mentionData.mention, channelConfig);
 
@@ -109,12 +178,34 @@ export class ClosedMessageRule implements MessageRule {
             errorMessage = '❌ **Transaction Error**: Position transaction not yet finalized on Solana.';
           } else if (err.message.includes('RPC error')) {
             errorMessage = '❌ **Network Error**: Unable to fetch position data from Solana.';
+          } else if (err.message.includes('LpAgent')) {
+            errorMessage = '❌ **API Error**: Unable to fetch position data from LpAgent API.';
           }
         }
 
         await message.channel.send(errorMessage);
       }
     }
+  }
+
+  /**
+   * Extracts Solana transaction signatures from message content
+   * Solana signatures are base58 encoded strings of 87-88 characters
+   */
+  private extractTransactionSignatures(content: string): string[] {
+    // Solana signatures are base58 strings, typically 87-88 characters long
+    // Base58 characters: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+    const base58Regex = /\b[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}\b/g;
+    const signatures: string[] = [];
+    let match: RegExpExecArray | null;
+
+    match = base58Regex.exec(content);
+    while (match !== null) {
+      signatures.push(match[0]);
+      match = base58Regex.exec(content);
+    }
+
+    return signatures;
   }
 
   private prepareMention(channelConfig: ChannelConfigEntity): MentionData {

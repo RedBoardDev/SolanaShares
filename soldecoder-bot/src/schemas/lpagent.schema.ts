@@ -214,6 +214,93 @@ export const LpAgentOverviewResponseSchema = z.object({
   data: LpAgentOverviewDataSchema,
 }).strip();
 
+/** Pagination info for historical positions. */
+export const LpAgentPaginationSchema = z.object({
+  currentPage: z.number(),
+  totalPages: z.number(),
+  totalCount: z.number(),
+  pageSize: z.number(),
+});
+
+/** Extended position schema for historical positions with additional fields. */
+export const LpAgentHistoricalPositionSchema = z.object({
+  status: z.string(),
+  strategyType: z.string(),
+  tokenId: z.string(),
+  pairName: z.string(),
+  currentValue: z.string(),
+  inputValue: z.number(),
+  inputNative: z.number(),
+  outputValue: z.number(),
+  outputNative: z.number(),
+  collectedReward: z.number(),
+  collectedRewardNative: z.number(),
+  collectedFee: z.number(),
+  collectedFeeNative: z.number(),
+  uncollectedFee: z.string(),
+  tickLower: z.number(),
+  tickUpper: z.number(),
+  pool: z.string(),
+  liquidity: z.string(),
+  token0: z.string(),
+  token1: z.string(),
+  inRange: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  pnl: z.object({
+    value: z.number(),
+    valueNative: z.number(),
+    percent: z.number(),
+    percentNative: z.number(),
+  }),
+  pnlNative: z.number(),
+  upnl: z.null().optional(),
+  owner: z.string(),
+  dpr: z.number(),
+  dprNative: z.number(),
+  ageHour: z.string(),
+  decimal0: z.number(),
+  decimal1: z.number(),
+  yield24h: z.null().optional(),
+  apr: z.null().optional(),
+  protocol: z.string(),
+  token0Info: LpAgentTokenInfoSchema,
+  token1Info: LpAgentTokenInfoSchema,
+  poolInfo: LpAgentPoolInfoSchema,
+  age: z.string(),
+  position: z.string(),
+  logo0: z.string().url(),
+  logo1: z.string().url(),
+  tokenName0: z.string(),
+  tokenName1: z.string(),
+  priceRange: z.tuple([z.number(), z.number(), z.number()]),
+  value: z.number(),
+  valueNative: z.number(),
+  close_At: z.string().optional(),
+  closeAt: z.string(),
+  fee: z.number(),
+  feeNative: z.number(),
+  feePercent: z.number(),
+  feePercentNative: z.number(),
+}).strip();
+
+/** Historical positions data container with pagination. */
+export const LpAgentHistoricalDataSchema = z.object({
+  data: z.array(LpAgentHistoricalPositionSchema),
+  pagination: LpAgentPaginationSchema,
+});
+
+/** Complete historical positions API response. */
+export const LpAgentHistoricalResponseSchema = z.object({
+  status: z.string(),
+  count: z.number(),
+  data: LpAgentHistoricalDataSchema,
+});
+
 export type WalletInfo = z.infer<typeof WalletInfoSchema>;
 export type LpAgentOverviewData = z.infer<typeof LpAgentOverviewDataSchema>;
 export type LpAgentOverviewResponse = z.infer<typeof LpAgentOverviewResponseSchema>;
+export type LpAgentPagination = z.infer<typeof LpAgentPaginationSchema>;
+export type LpAgentHistoricalPosition = z.infer<typeof LpAgentHistoricalPositionSchema>;
+export type LpAgentHistoricalData = z.infer<typeof LpAgentHistoricalDataSchema>;
+export type LpAgentHistoricalResponse = z.infer<typeof LpAgentHistoricalResponseSchema>;

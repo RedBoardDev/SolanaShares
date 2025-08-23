@@ -44,6 +44,26 @@ export class SolanaWeb3Service {
     return this.extractFirstAccount(chosen.instr);
   }
 
+  public async getTransactionSigner(txSignature: string): Promise<string> {
+    const tx = await this.fetchParsedTransaction(txSignature);
+
+    if (tx.meta?.err) {
+      throw new Error(`Transaction ${txSignature} failed: ${JSON.stringify(tx.meta.err)}`);
+    }
+
+    // The first signer is typically the transaction initiator (wallet owner)
+    const accountKeys = tx.transaction.message.accountKeys;
+    if (accountKeys.length === 0) {
+      throw new Error(`No account keys found in transaction ${txSignature}`);
+    }
+
+    // First account is the fee payer and transaction signer
+    const signer = accountKeys[0];
+    const signerAddress = typeof signer === 'string' ? signer : signer.pubkey.toBase58();
+
+    return signerAddress;
+  }
+
   private async fetchParsedTransaction(signature: string): Promise<ParsedTransactionWithMeta> {
     let tx: ParsedTransactionWithMeta | null = null;
     let lastError: Error | null = null;
