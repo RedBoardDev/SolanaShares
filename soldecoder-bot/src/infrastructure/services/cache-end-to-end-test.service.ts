@@ -1,5 +1,8 @@
 // import type { Client, TextChannel } from 'discord.js';
-// import { CacheService } from '@infrastructure/services/cache.service';
+// import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
+// import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
+// import { DynamoGlobalMessageRepository } from '@infrastructure/repositories/dynamo-global-message.repository';
+// import { GenericCacheServiceImpl } from '@infrastructure/services/generic-cache.service';
 // import { DatabaseService } from '@infrastructure/services/database.service';
 // import { ChannelConfigEntity } from '@domain/entities/channel-config.entity';
 // import { GuildSettingsEntity } from '@domain/entities/guild-settings.entity';
@@ -40,7 +43,10 @@
 //  */
 // export class CacheEndToEndTestService {
 //   private static instance: CacheEndToEndTestService;
-//   private readonly cacheService: CacheService;
+//   private readonly channelRepo: DynamoChannelConfigRepository;
+//   private readonly guildRepo: DynamoGuildSettingsRepository;
+//   private readonly globalRepo: DynamoGlobalMessageRepository;
+//   private readonly cacheService: GenericCacheServiceImpl;
 //   private readonly databaseService: DatabaseService;
 
 //   // IDs de test FICTIFS - ne correspondent à aucune vraie guild/channel
@@ -60,7 +66,10 @@
 //   private createdGuildIds: Set<string> = new Set();
 
 //   private constructor() {
-//     this.cacheService = CacheService.getInstance();
+//     this.channelRepo = new DynamoChannelConfigRepository();
+//     this.guildRepo = new DynamoGuildSettingsRepository();
+//     this.globalRepo = new DynamoGlobalMessageRepository();
+//     this.cacheService = GenericCacheServiceImpl.getInstance();
 //     this.databaseService = new DatabaseService();
 //   }
 
@@ -213,8 +222,8 @@
 //       name: 'Initial State & Cleanup',
 //       success: testChannels.length === 0 && testSettings.length === 0,
 //       duration: Date.now() - start,
-//       details: `Cache: ${cacheStats.channels} channels, ${cacheStats.guildSettings} settings. Test data cleaned.`,
-//       cacheCount: cacheStats.channels,
+//       details: `Cache: ${cacheStats.totalKeys} total keys, ${cacheStats.expiredKeys} expired. Test data cleaned.`,
+//       cacheCount: cacheStats.totalKeys,
 //       dbCount: allChannels.length,
 //     };
 //   }
@@ -265,7 +274,7 @@
 //       createdAt: Date.now(),
 //     });
 
-//     await this.cacheService.saveGuildSettings(guildSettings);
+//     await this.guildRepo.save(guildSettings);
 //     this.createdGuildIds.add(this.TEST_GUILD_ID);
 
 //     return {
@@ -282,7 +291,7 @@
 //     const start = Date.now();
 
 //     // Vérifier en cache
-//     const cachedSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
+//     const cachedSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
 
 //     // Vérifier en DB
 //     const dbSettings = await this.databaseService.getGuildSettings(this.TEST_GUILD_ID);
@@ -354,7 +363,7 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(config);
+//       await this.channelRepo.save(config);
 //       this.createdChannelIds.add(channelData.channelId);
 //     }
 
@@ -377,7 +386,7 @@
 //     let integrityPass = true;
 
 //     for (const channelId of channelIds) {
-//       const cached = await this.cacheService.getChannelConfig(channelId);
+//       const cached = await this.channelRepo.getByChannelId(channelId);
 //       const fromDb = await this.databaseService.getChannelConfig(channelId);
 
 //       if (cached) cacheCount++;
@@ -407,7 +416,7 @@
 //     const start = Date.now();
 
 //     const messageId = 'TEST_GLOBAL_MESSAGE_123';
-//     await this.cacheService.saveGlobalMessage(this.TEST_GUILD_ID, messageId);
+//     await this.globalRepo.saveGlobalMessage(this.TEST_GUILD_ID, messageId);
 
 //     return {
 //       name: 'Create Global Message',
@@ -423,9 +432,9 @@
 //     const start = Date.now();
 
 //     // Vérifier l'état complet
-//     const guildChannels = await this.cacheService.getGuildChannels(this.TEST_GUILD_ID);
-//     const guildSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
-//     const globalMessage = await this.cacheService.getGlobalMessage(this.TEST_GUILD_ID);
+//     const guildChannels = await this.channelRepo.getByGuildId(this.TEST_GUILD_ID);
+//     const guildSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
+//     const globalMessage = await this.globalRepo.getGlobalMessage(this.TEST_GUILD_ID);
 
 //     const expectedChannels = 3;
 //     const hasSettings = guildSettings !== null;
@@ -446,7 +455,7 @@
 //   private async stepUpdateGuildSettings(): Promise<TestStep> {
 //     const start = Date.now();
 
-//     const existingSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
+//     const existingSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
 //     if (!existingSettings) {
 //       throw new Error('Guild settings not found for update');
 //     }
@@ -458,10 +467,10 @@
 //       autoDeleteWarnings: true,
 //     });
 
-//     await this.cacheService.saveGuildSettings(updatedSettings);
+//     await this.guildRepo.save(updatedSettings);
 
 //     // Vérifier la mise à jour immédiate
-//     const verifySettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
+//     const verifySettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const success = verifySettings?.timezone === 'UTC' && verifySettings.positionDisplayEnabled === false;
 
 //     return {
@@ -478,7 +487,7 @@
 //     const start = Date.now();
 
 //     // Mettre à jour le premier channel
-//     const existingConfig = await this.cacheService.getChannelConfig(this.TEST_CHANNEL_1);
+//     const existingConfig = await this.channelRepo.getByChannelId(this.TEST_CHANNEL_1);
 //     if (!existingConfig) {
 //       throw new Error('Channel config not found for update');
 //     }
@@ -490,10 +499,10 @@
 //       notifyOnClose: false,
 //     });
 
-//     await this.cacheService.saveChannelConfig(updatedConfig);
+//     await this.channelRepo.save(updatedConfig);
 
 //     // Vérifier la mise à jour
-//     const verifyConfig = await this.cacheService.getChannelConfig(this.TEST_CHANNEL_1);
+//     const verifyConfig = await this.channelRepo.getByChannelId(this.TEST_CHANNEL_1);
 //     const success = verifyConfig?.threshold === 5.0 && verifyConfig.image === false;
 
 //     return {
@@ -509,11 +518,11 @@
 //   private async stepDeleteOneChannel(): Promise<TestStep> {
 //     const start = Date.now();
 
-//     await this.cacheService.deleteChannelConfig(this.TEST_CHANNEL_2);
+//     await this.channelRepo.delete(this.TEST_CHANNEL_2);
 //     this.createdChannelIds.delete(this.TEST_CHANNEL_2);
 
 //     // Vérifier la suppression
-//     const deletedConfig = await this.cacheService.getChannelConfig(this.TEST_CHANNEL_2);
+//     const deletedConfig = await this.channelRepo.getByChannelId(this.TEST_CHANNEL_2);
 //     const success = deletedConfig === null;
 
 //     return {
@@ -529,12 +538,12 @@
 //   private async stepVerifyPartialDeletion(): Promise<TestStep> {
 //     const start = Date.now();
 
-//     const guildChannels = await this.cacheService.getGuildChannels(this.TEST_GUILD_ID);
+//     const guildChannels = await this.channelRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const remainingChannels = [this.TEST_CHANNEL_1, this.TEST_CHANNEL_3];
 
 //     let foundChannels = 0;
 //     for (const channelId of remainingChannels) {
-//       const config = await this.cacheService.getChannelConfig(channelId);
+//       const config = await this.channelRepo.getByChannelId(channelId);
 //       if (config) foundChannels++;
 //     }
 
@@ -554,11 +563,11 @@
 //     const start = Date.now();
 
 //     // Comparer cache vs DB pour toutes les données de test
-//     const guildChannels = await this.cacheService.getGuildChannels(this.TEST_GUILD_ID);
+//     const guildChannels = await this.channelRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const allDbChannels = await this.databaseService.getAllChannelConfigs();
 //     const testDbChannels = allDbChannels.filter((c) => c.guildId === this.TEST_GUILD_ID);
 
-//     const cacheSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
+//     const cacheSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const dbSettings = await this.databaseService.getGuildSettings(this.TEST_GUILD_ID);
 
 //     const channelConsistent = guildChannels.length === testDbChannels.length;
@@ -584,8 +593,8 @@
 
 //     // Test de lecture
 //     for (let i = 0; i < iterations; i++) {
-//       await this.cacheService.getChannelConfig(this.TEST_CHANNEL_1);
-//       await this.cacheService.getChannelConfig(this.TEST_CHANNEL_3);
+//       await this.channelRepo.getByChannelId(this.TEST_CHANNEL_1);
+//       await this.channelRepo.getByChannelId(this.TEST_CHANNEL_3);
 //     }
 
 //     const readDuration = Date.now() - readStart;
@@ -607,14 +616,14 @@
 //     });
 
 //     for (let i = 0; i < 10; i++) {
-//       await this.cacheService.saveChannelConfig(tempConfig);
+//       await this.channelRepo.save(tempConfig);
 //     }
 
 //     const writeDuration = Date.now() - writeStart;
 //     const avgWriteTime = writeDuration / 10;
 
 //     // Cleanup du test de performance
-//     await this.cacheService.deleteChannelConfig(tempChannelId);
+//     await this.channelRepo.delete(tempChannelId);
 
 //     const success = avgReadTime < 1.0 && avgWriteTime < 50.0; // Seuils de performance
 
@@ -648,7 +657,7 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(initialConfig);
+//       await this.channelRepo.save(initialConfig);
 //       this.createdChannelIds.add(raceChannelId);
 
 //       // Lancer 10 mises à jour concurrentes
@@ -657,19 +666,19 @@
 //           ...initialConfig,
 //           threshold: i * 1.0,
 //         });
-//         return this.cacheService.saveChannelConfig(config);
+//         return this.channelRepo.save(config);
 //       });
 
 //       await Promise.all(concurrentUpdates);
 
 //       // Vérifier la cohérence finale
-//       const finalConfig = await this.cacheService.getChannelConfig(raceChannelId);
+//       const finalConfig = await this.channelRepo.getByChannelId(raceChannelId);
 //       const dbConfig = await this.databaseService.getChannelConfig(raceChannelId);
 
 //       const success = finalConfig !== null && dbConfig !== null && finalConfig.threshold === dbConfig.threshold;
 
 //       // Cleanup
-//       await this.cacheService.deleteChannelConfig(raceChannelId);
+//       await this.channelRepo.delete(raceChannelId);
 //       this.createdChannelIds.delete(raceChannelId);
 
 //       return {
@@ -714,11 +723,11 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(config);
+//       await this.channelRepo.save(config);
 //       this.createdChannelIds.add(ttlTestChannelId);
 
 //       // Vérifier que c'est en cache
-//       const cached1 = await this.cacheService.getChannelConfig(ttlTestChannelId);
+//       const cached1 = await this.channelRepo.getByChannelId(ttlTestChannelId);
 //       if (!cached1) throw new Error('Config not saved to cache');
 
 //       logger.info(`[E2E-TEST] ⏳ Waiting ${this.TTL_WAIT_MS / 1000} seconds for TTL expiration...`);
@@ -727,14 +736,14 @@
 //       await new Promise((resolve) => setTimeout(resolve, this.TTL_WAIT_MS));
 
 //       // Accéder à nouveau - devrait déclencher un refresh depuis la DB
-//       const cached2 = await this.cacheService.getChannelConfig(ttlTestChannelId);
+//       const cached2 = await this.channelRepo.getByChannelId(ttlTestChannelId);
 //       if (!cached2) throw new Error('Config should be refreshed from DB, not deleted');
 
 //       // Vérifier que les données sont identiques
 //       const dataMatch = cached1.threshold === cached2.threshold && cached1.tagId === cached2.tagId;
 
 //       // Cleanup
-//       await this.cacheService.deleteChannelConfig(ttlTestChannelId);
+//       await this.channelRepo.delete(ttlTestChannelId);
 //       this.createdChannelIds.delete(ttlTestChannelId);
 
 //       return {
@@ -776,25 +785,25 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(config);
+//       await this.channelRepo.save(config);
 //       this.createdChannelIds.add(ttlRefreshChannelId);
 
 //       // Attendre presque le TTL complet (25 secondes)
 //       await new Promise((resolve) => setTimeout(resolve, this.CACHE_TTL_MS - 5000));
 
 //       // Accéder - devrait toujours être en cache
-//       const beforeExpiry = await this.cacheService.getChannelConfig(ttlRefreshChannelId);
+//       const beforeExpiry = await this.channelRepo.getByChannelId(ttlRefreshChannelId);
 //       const stillValid = beforeExpiry !== null && beforeExpiry.threshold === 2.71;
 
 //       // Attendre que le TTL expire (10 secondes de plus = 35 secondes total)
 //       await new Promise((resolve) => setTimeout(resolve, 10000));
 
 //       // Maintenant ça devrait être rafraîchi depuis la DB
-//       const afterExpiry = await this.cacheService.getChannelConfig(ttlRefreshChannelId);
+//       const afterExpiry = await this.channelRepo.getByChannelId(ttlRefreshChannelId);
 //       const wasRefreshed = afterExpiry !== null && afterExpiry.threshold === 2.71;
 
 //       // Cleanup
-//       await this.cacheService.deleteChannelConfig(ttlRefreshChannelId);
+//       await this.channelRepo.delete(ttlRefreshChannelId);
 //       this.createdChannelIds.delete(ttlRefreshChannelId);
 
 //       const success = stillValid && wasRefreshed;
@@ -842,7 +851,7 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(config);
+//       await this.channelRepo.save(config);
 //       this.createdChannelIds.add(consistencyChannelId);
 
 //       // Modifier directement en DB (simuler un changement externe)
@@ -858,12 +867,12 @@
 //       await new Promise((resolve) => setTimeout(resolve, this.TTL_WAIT_MS));
 
 //       // Accéder - devrait récupérer la version modifiée de la DB
-//       const retrieved = await this.cacheService.getChannelConfig(consistencyChannelId);
+//       const retrieved = await this.channelRepo.getByChannelId(consistencyChannelId);
 
 //       const success = retrieved?.threshold === 9.99 && retrieved?.image === true;
 
 //       // Cleanup
-//       await this.cacheService.deleteChannelConfig(consistencyChannelId);
+//       await this.channelRepo.delete(consistencyChannelId);
 //       this.createdChannelIds.delete(consistencyChannelId);
 
 //       return {
@@ -925,30 +934,30 @@
 //                   threshold: Math.random() * 10,
 //                   createdAt: Date.now(),
 //                 });
-//                 await this.cacheService.saveChannelConfig(config);
+//                 await this.channelRepo.save(config);
 //                 this.createdChannelIds.add(channelId);
 //                 break;
 //               }
 
 //               case 1: // Read
-//                 await this.cacheService.getChannelConfig(channelId);
+//                 await this.channelRepo.getByChannelId(channelId);
 //                 break;
 
 //               case 2: {
 //                 // Update
-//                 const existing = await this.cacheService.getChannelConfig(channelId);
+//                 const existing = await this.channelRepo.getByChannelId(channelId);
 //                 if (existing) {
 //                   const updated = ChannelConfigEntity.create({
 //                     ...existing,
 //                     threshold: Math.random() * 10,
 //                   });
-//                   await this.cacheService.saveChannelConfig(updated);
+//                   await this.channelRepo.save(updated);
 //                 }
 //                 break;
 //               }
 
 //               case 3: // Delete
-//                 await this.cacheService.deleteChannelConfig(channelId);
+//                 await this.channelRepo.delete(channelId);
 //                 this.createdChannelIds.delete(channelId);
 //                 break;
 //             }
@@ -1027,7 +1036,7 @@
 //           threshold: i * 0.5,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         this.createdChannelIds.add(channelId);
 //         baseChannelIds.push(channelId);
 //       }
@@ -1040,7 +1049,7 @@
 //         // Test de lecture
 //         const readStart = Date.now();
 //         for (const channelId of baseChannelIds) {
-//           await this.cacheService.getChannelConfig(channelId);
+//           await this.channelRepo.getByChannelId(channelId);
 //         }
 //         readTimes.push(Date.now() - readStart);
 
@@ -1058,11 +1067,11 @@
 //           threshold: i * 0.1,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(testConfig);
+//         await this.channelRepo.save(testConfig);
 //         writeTimes.push(Date.now() - writeStart);
 
 //         // Supprimer la donnée temporaire
-//         await this.cacheService.deleteChannelConfig(tempChannelId);
+//         await this.channelRepo.delete(tempChannelId);
 
 //         // Pause micro pour éviter la surcharge
 //         if (i % 10 === 0) {
@@ -1122,7 +1131,7 @@
 //           threshold: Math.random() * 100,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         this.createdChannelIds.add(channelId);
 //       }
 
@@ -1132,7 +1141,7 @@
 //       // Cleanup
 //       for (let i = 0; i < largeDataCount; i++) {
 //         const channelId = `TEST_MEMORY_${i}`;
-//         await this.cacheService.deleteChannelConfig(channelId);
+//         await this.channelRepo.delete(channelId);
 //         this.createdChannelIds.delete(channelId);
 //       }
 
@@ -1201,7 +1210,7 @@
 //               createdAt: Date.now(),
 //             });
 
-//             await this.cacheService.saveChannelConfig(config);
+//             await this.channelRepo.save(config);
 //             this.createdChannelIds.add(channelId);
 //             createdInSimulation.push(channelId);
 //             operationCount++;
@@ -1211,7 +1220,7 @@
 //           if (createdInSimulation.length > 0) {
 //             for (let i = 0; i < Math.min(5, createdInSimulation.length); i++) {
 //               const randomIndex = Math.floor(Math.random() * createdInSimulation.length);
-//               await this.cacheService.getChannelConfig(createdInSimulation[randomIndex]);
+//               await this.channelRepo.getByChannelId(createdInSimulation[randomIndex]);
 //               operationCount++;
 //             }
 //           }
@@ -1220,13 +1229,13 @@
 //           if (Math.random() > 0.7 && createdInSimulation.length > 0) {
 //             const randomIndex = Math.floor(Math.random() * createdInSimulation.length);
 //             const updateChannelId = createdInSimulation[randomIndex];
-//             const existing = await this.cacheService.getChannelConfig(updateChannelId);
+//             const existing = await this.channelRepo.getByChannelId(updateChannelId);
 //             if (existing) {
 //               const updated = ChannelConfigEntity.create({
 //                 ...existing,
 //                 threshold: Math.random() * 3,
 //               });
-//               await this.cacheService.saveChannelConfig(updated);
+//               await this.channelRepo.save(updated);
 //               operationCount++;
 //             }
 //           }
@@ -1245,7 +1254,7 @@
 //       let cleanupErrors = 0;
 //       for (const channelId of createdInSimulation) {
 //         try {
-//           await this.cacheService.deleteChannelConfig(channelId);
+//           await this.channelRepo.delete(channelId);
 //           this.createdChannelIds.delete(channelId);
 //         } catch (error) {
 //           cleanupErrors++;
@@ -1302,7 +1311,7 @@
 //         createdAt: Date.now(),
 //       });
 
-//       await this.cacheService.saveChannelConfig(config);
+//       await this.channelRepo.save(config);
 //       this.createdChannelIds.add(recoveryChannelId);
 
 //       // Simuler différents types de "corruption" et vérifier la récupération
@@ -1311,7 +1320,7 @@
 
 //       // Test 1: Accès à des données inexistantes
 //       try {
-//         const fakeAccess = await this.cacheService.getChannelConfig('COMPLETELY_FAKE_ID_123456');
+//         const fakeAccess = await this.channelRepo.getByChannelId('COMPLETELY_FAKE_ID_123456');
 //         if (fakeAccess === null) {
 //           successfulRecoveries++; // Bonne gestion
 //         }
@@ -1321,16 +1330,16 @@
 //       recoveryTests++;
 
 //       // Test 2: Suppression puis re-accès
-//       await this.cacheService.deleteChannelConfig(recoveryChannelId);
-//       const afterDelete = await this.cacheService.getChannelConfig(recoveryChannelId);
+//       await this.channelRepo.delete(recoveryChannelId);
+//       const afterDelete = await this.channelRepo.getByChannelId(recoveryChannelId);
 //       if (afterDelete === null) {
 //         successfulRecoveries++; // Bonne gestion de la suppression
 //       }
 //       recoveryTests++;
 
 //       // Test 3: Re-création après suppression
-//       await this.cacheService.saveChannelConfig(config);
-//       const afterRecreate = await this.cacheService.getChannelConfig(recoveryChannelId);
+//       await this.channelRepo.save(config);
+//       const afterRecreate = await this.channelRepo.getByChannelId(recoveryChannelId);
 //       if (afterRecreate && afterRecreate.threshold === 2.5) {
 //         successfulRecoveries++; // Bonne re-création
 //       }
@@ -1340,18 +1349,18 @@
 //       const rapidOps = Array.from({ length: 10 }, async (_, i) => {
 //         try {
 //           if (i % 3 === 0) {
-//             return await this.cacheService.saveChannelConfig(config);
+//             return await this.channelRepo.save(config);
 //           }
 //           if (i % 3 === 1) {
-//             return await this.cacheService.getChannelConfig(recoveryChannelId);
+//             return await this.channelRepo.getByChannelId(recoveryChannelId);
 //           }
-//           const existing = await this.cacheService.getChannelConfig(recoveryChannelId);
+//           const existing = await this.channelRepo.getByChannelId(recoveryChannelId);
 //           if (existing) {
 //             const updated = ChannelConfigEntity.create({
 //               ...existing,
 //               threshold: i * 0.1,
 //             });
-//             return await this.cacheService.saveChannelConfig(updated);
+//             return await this.channelRepo.save(updated);
 //           }
 //         } catch (error) {
 //           return null;
@@ -1367,7 +1376,7 @@
 //       recoveryTests++;
 
 //       // Cleanup
-//       await this.cacheService.deleteChannelConfig(recoveryChannelId);
+//       await this.channelRepo.delete(recoveryChannelId);
 //       this.createdChannelIds.delete(recoveryChannelId);
 
 //       const success = successfulRecoveries === recoveryTests;
@@ -1416,7 +1425,7 @@
 //           threshold: 1.0,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         // Si on arrive ici, c'est un problème
 //       } catch (error) {
 //         edgeCasesPassed++; // Devrait échouer
@@ -1437,16 +1446,16 @@
 //           threshold: 1.0,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         this.createdChannelIds.add(longTagChannelId);
 
 //         // Vérifier qu'on peut le récupérer
-//         const retrieved = await this.cacheService.getChannelConfig(longTagChannelId);
+//         const retrieved = await this.channelRepo.getByChannelId(longTagChannelId);
 //         if (retrieved && retrieved.tagId.length === 10000) {
 //           edgeCasesPassed++;
 //         }
 
-//         await this.cacheService.deleteChannelConfig(longTagChannelId);
+//         await this.channelRepo.delete(longTagChannelId);
 //         this.createdChannelIds.delete(longTagChannelId);
 //       } catch (error) {
 //         // C'est OK si ça échoue
@@ -1467,15 +1476,15 @@
 //           threshold: 99.99,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         this.createdChannelIds.add(specialChannelId);
 
-//         const retrieved = await this.cacheService.getChannelConfig(specialChannelId);
+//         const retrieved = await this.channelRepo.getByChannelId(specialChannelId);
 //         if (retrieved && retrieved.threshold === 99.99) {
 //           edgeCasesPassed++;
 //         }
 
-//         await this.cacheService.deleteChannelConfig(specialChannelId);
+//         await this.channelRepo.delete(specialChannelId);
 //         this.createdChannelIds.delete(specialChannelId);
 //       } catch (error) {
 //         // Peut échouer selon l'implémentation
@@ -1496,15 +1505,15 @@
 //           threshold: Number.MAX_SAFE_INTEGER,
 //           createdAt: Date.now(),
 //         });
-//         await this.cacheService.saveChannelConfig(config);
+//         await this.channelRepo.save(config);
 //         this.createdChannelIds.add(extremeChannelId);
 
-//         const retrieved = await this.cacheService.getChannelConfig(extremeChannelId);
+//         const retrieved = await this.channelRepo.getByChannelId(extremeChannelId);
 //         if (retrieved && retrieved.threshold === Number.MAX_SAFE_INTEGER) {
 //           edgeCasesPassed++;
 //         }
 
-//         await this.cacheService.deleteChannelConfig(extremeChannelId);
+//         await this.channelRepo.delete(extremeChannelId);
 //         this.createdChannelIds.delete(extremeChannelId);
 //       } catch (error) {
 //         // OK si ça échoue
@@ -1534,10 +1543,10 @@
 //   private async stepDeleteGlobalMessage(): Promise<TestStep> {
 //     const start = Date.now();
 
-//     await this.cacheService.deleteGlobalMessage(this.TEST_GUILD_ID);
+//     await this.globalRepo.deleteGlobalMessage(this.TEST_GUILD_ID);
 
 //     // Vérifier la suppression
-//     const deletedMessage = await this.cacheService.getGlobalMessage(this.TEST_GUILD_ID);
+//     const deletedMessage = await this.globalRepo.getGlobalMessage(this.TEST_GUILD_ID);
 //     const success = deletedMessage === null;
 
 //     return {
@@ -1556,12 +1565,12 @@
 //     const remainingChannels = [this.TEST_CHANNEL_1, this.TEST_CHANNEL_3];
 
 //     for (const channelId of remainingChannels) {
-//       await this.cacheService.deleteChannelConfig(channelId);
+//       await this.channelRepo.delete(channelId);
 //       this.createdChannelIds.delete(channelId);
 //     }
 
 //     // Vérifier que tous sont supprimés
-//     const guildChannels = await this.cacheService.getGuildChannels(this.TEST_GUILD_ID);
+//     const guildChannels = await this.channelRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const success = guildChannels.length === 0;
 
 //     return {
@@ -1577,11 +1586,11 @@
 //   private async stepDeleteGuildSettings(): Promise<TestStep> {
 //     const start = Date.now();
 
-//     await this.cacheService.deleteGuildSettings(this.TEST_GUILD_ID);
+//     await this.guildRepo.delete(this.TEST_GUILD_ID);
 //     this.createdGuildIds.delete(this.TEST_GUILD_ID);
 
 //     // Vérifier la suppression
-//     const deletedSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
+//     const deletedSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
 //     const success = deletedSettings === null;
 
 //     return {
@@ -1598,9 +1607,9 @@
 //     const start = Date.now();
 
 //     // Vérifier que tout est vide
-//     const guildChannels = await this.cacheService.getGuildChannels(this.TEST_GUILD_ID);
-//     const guildSettings = await this.cacheService.getGuildSettings(this.TEST_GUILD_ID);
-//     const globalMessage = await this.cacheService.getGlobalMessage(this.TEST_GUILD_ID);
+//     const guildChannels = await this.channelRepo.getByGuildId(this.TEST_GUILD_ID);
+//     const guildSettings = await this.guildRepo.getByGuildId(this.TEST_GUILD_ID);
+//     const globalMessage = await this.globalRepo.getGlobalMessage(this.TEST_GUILD_ID);
 
 //     // Vérifier aussi en DB
 //     const allDbChannels = await this.databaseService.getAllChannelConfigs();
@@ -1635,7 +1644,7 @@
 //       const cacheStats = this.cacheService.getStats();
 //       const allDbChannels = await this.databaseService.getAllChannelConfigs();
 //       const allDbSettings = await this.databaseService.getAllGuildSettings();
-//       const allCachedChannels = this.cacheService.getAllChannelConfigs();
+//       const allCachedChannels = await this.channelRepo.getAll();
 
 //       // Filtrer TOUTES les données de test possibles
 //       const testPatterns = [
@@ -1674,12 +1683,12 @@
 //       const cacheClean = testCachedChannels.length === 0;
 
 //       // Vérifier l'intégrité du cache
-//       const cacheIntegrity = cacheStats.channels >= 0 && cacheStats.guildSettings >= 0;
+//       const cacheIntegrity = cacheStats.totalKeys >= 0 && cacheStats.expiredKeys >= 0;
 
 //       // Test de performance finale
 //       const perfStart = Date.now();
 //       for (let i = 0; i < 10; i++) {
-//         await this.cacheService.getChannelConfig('NON_EXISTENT_FINAL_TEST');
+//         await this.channelRepo.getByChannelId('NON_EXISTENT_FINAL_TEST');
 //       }
 //       const finalPerfTime = (Date.now() - perfStart) / 10;
 //       const perfOk = finalPerfTime < 20; // Moins de 20ms par opération
@@ -1726,7 +1735,7 @@
 //       // Supprimer toutes les données trackées
 //       for (const channelId of this.createdChannelIds) {
 //         try {
-//           await this.cacheService.deleteChannelConfig(channelId);
+//           await this.channelRepo.delete(channelId);
 //         } catch (error) {
 //           // Ignorer les erreurs
 //         }
@@ -1734,15 +1743,15 @@
 
 //       for (const guildId of this.createdGuildIds) {
 //         try {
-//           await this.cacheService.deleteGuildSettings(guildId);
-//           await this.cacheService.deleteGlobalMessage(guildId);
+//           await this.guildRepo.delete(guildId);
+//           await this.globalRepo.deleteGlobalMessage(guildId);
 //         } catch (error) {
 //           // Ignorer les erreurs
 //         }
 //       }
 
 //       // Supprimer toutes les données avec patterns de test
-//       const allCachedChannels = this.cacheService.getAllChannelConfigs();
+//       const allCachedChannels = await this.channelRepo.getAll();
 //       const testPatterns = [
 //         'TEST_',
 //         'STRESS_',
@@ -1765,7 +1774,7 @@
 
 //       for (const channel of testChannels) {
 //         try {
-//           await this.cacheService.deleteChannelConfig(channel.channelId);
+//           await this.channelRepo.delete(channel.channelId);
 //         } catch (error) {
 //           // Ignorer
 //         }
@@ -1807,11 +1816,11 @@
 //       duration,
 //       steps,
 //       finalState: {
-//         cacheChannels: (await this.cacheService.getGuildChannels(this.TEST_GUILD_ID)).length,
+//         cacheChannels: (await this.channelRepo.getByGuildId(this.TEST_GUILD_ID)).length,
 //         dbChannels: testDbChannels.length,
-//         cacheSettings: (await this.cacheService.getGuildSettings(this.TEST_GUILD_ID)) ? 1 : 0,
+//         cacheSettings: (await this.guildRepo.getByGuildId(this.TEST_GUILD_ID)) ? 1 : 0,
 //         dbSettings: testDbSettings.length,
-//         cacheGlobalMessages: (await this.cacheService.getGlobalMessage(this.TEST_GUILD_ID)) ? 1 : 0,
+//         cacheGlobalMessages: (await this.globalRepo.getGlobalMessage(this.TEST_GUILD_ID)) ? 1 : 0,
 //         dbGlobalMessages: 0,
 //         unexpectedData,
 //       },
