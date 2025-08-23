@@ -3,13 +3,17 @@ import { EmbedBuilder } from "discord.js";
 
 export function buildGlobalPositionEmbed(
 	positionsByWallet: Map<string, PositionStatus[]>,
-	options?: { percentOnly?: boolean; footerText?: string },
+	options?: { percentOnly?: boolean; footerText?: string, updateId?: string },
 ): EmbedBuilder {
 	const embed = new EmbedBuilder()
 		.setTitle("📊 Position overview")
 		.setColor(0x5865f2)
 		.setTimestamp()
-		.setFooter({ text: options?.footerText ?? "Updates every 30 seconds" });
+		.setFooter({
+			text:
+				(options?.footerText ?? "Every 1 minute - ") +
+				(options?.updateId ? options.updateId : "")
+		});
 
 	if (positionsByWallet.size === 0) {
 		embed.setDescription("No active positions found in followed channels.");
