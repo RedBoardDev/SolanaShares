@@ -19,7 +19,7 @@ export interface SetupSessionData {
 export class SetupSessionService {
   private static instance: SetupSessionService;
   private sessions: Map<string, SetupSessionData> = new Map();
-  private readonly SESSION_TIMEOUT = 60 * 60_000;
+  private readonly SESSION_TIMEOUT = 10 * 60_000;
 
   private constructor() {
     setInterval(() => this.cleanupExpiredSessions(), 30 * 60_000);

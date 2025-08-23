@@ -2,7 +2,12 @@ import type { ChatInputCommandInteraction } from 'discord.js';
 import { MessageFlags } from 'discord.js';
 import { CommandRateLimiterService } from '@infrastructure/services/command-rate-limiter.service';
 import { logger } from '@helpers/logger';
-import { MissingConfigurationError, NotInGuildError, RateLimitedError, respondWithCommandError } from '@presentation/commands/command-errors';
+import {
+  MissingConfigurationError,
+  NotInGuildError,
+  RateLimitedError,
+  respondWithCommandError,
+} from '@presentation/commands/command-errors';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 
 export type RunCommandOptions = {
@@ -54,7 +59,9 @@ export async function runCommand(options: RunCommandOptions): Promise<void> {
       const guildSettings = await guildRepo.getByGuildId(guildId);
 
       if (!guildSettings) {
-        throw new MissingConfigurationError('❌ This server has not been configured yet. Please run `/start` to set up the bot.');
+        throw new MissingConfigurationError(
+          '❌ This server has not been configured yet. Please run `/start` to set up the bot.',
+        );
       }
     }
 

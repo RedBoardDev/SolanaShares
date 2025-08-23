@@ -1,38 +1,55 @@
-import { CacheService } from '@infrastructure/services/cache.service';
-import { logger } from '@helpers/logger';
+import { CachedRepositoryBase } from './base/cached-repository.base';
 import type { GlobalPositionMessage } from '@schemas/position-status.schema';
 
 export type { GlobalPositionMessage };
 
 /**
- * Repository for global position messages.
- * All operations are performed exclusively via the CacheService.
+ * Simplified global message repository using the cached base class.
+ * Clean and concise - no repetitive patterns!
  */
-export class DynamoGlobalMessageRepository {
-  private readonly cacheService: CacheService;
-
-  constructor() {
-    this.cacheService = CacheService.getInstance();
-  }
+export class DynamoGlobalMessageRepository extends CachedRepositoryBase {
+  private readonly CACHE_PREFIX = 'global_message';
 
   async getGlobalMessageId(guildId: string): Promise<string | null> {
-    logger.debug('[REPO] Getting global message ID', { guildId });
-    const message = await this.cacheService.getGlobalMessage(guildId);
+    const message = await this.getGlobalMessage(guildId);
     return message ? message.messageId : null;
   }
 
   async getGlobalMessage(guildId: string): Promise<GlobalPositionMessage | null> {
-    logger.debug('[REPO] Getting global message', { guildId });
-    return await this.cacheService.getGlobalMessage(guildId);
+    const cacheKey = `${this.CACHE_PREFIX}:${guildId}`;
+
+    return this.cachedGet(
+      cacheKey,
+      () => this.databaseService.getGlobalMessage(guildId),
+      { guildId, operation: 'getGlobalMessage' }
+    );
   }
 
   async saveGlobalMessage(guildId: string, messageId: string): Promise<void> {
-    logger.debug('[REPO] Saving global message', { guildId, messageId });
-    return await this.cacheService.saveGlobalMessage(guildId, messageId);
+    const cacheKey = `${this.CACHE_PREFIX}:${guildId}`;
+
+    // Create the message object to cache
+    const globalMessage: GlobalPositionMessage = {
+      messageId,
+      guildId,
+      lastUpdated: Date.now(),
+    };
+
+    await this.cachedSave(
+      cacheKey,
+      globalMessage,
+      () => this.databaseService.saveGlobalMessage(guildId, messageId),
+      { guildId, messageId, operation: 'saveGlobalMessage' }
+    );
   }
 
   async deleteGlobalMessage(guildId: string): Promise<void> {
-    logger.debug('[REPO] Deleting global message', { guildId });
-    return await this.cacheService.deleteGlobalMessage(guildId);
+    const cacheKey = `${this.CACHE_PREFIX}:${guildId}`;
+
+    await this.cachedDelete(
+      cacheKey,
+      () => this.databaseService.deleteGlobalMessage(guildId),
+      { guildId, operation: 'deleteGlobalMessage' }
+    );
   }
 }

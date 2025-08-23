@@ -2,8 +2,12 @@ import { SlashCommandBuilder, PermissionFlagsBits, type ChatInputCommandInteract
 import { GetGuildSettingsUseCase } from '@application/use-cases/get-guild-settings.use-case';
 import { DynamoGuildSettingsRepository } from '@infrastructure/repositories/dynamo-guild-settings.repository';
 import { SetupSessionService } from '@infrastructure/services/setup-session.service';
-import { buildStep1Embed, buildStep1Components, buildResumeSetupEmbed, buildResumeSetupComponents } from '@presentation/ui/embeds/setup-flow.embed';
-import { logger } from '@helpers/logger';
+import {
+  buildStep1Embed,
+  buildStep1Components,
+  buildResumeSetupEmbed,
+  buildResumeSetupComponents,
+} from '@presentation/ui/embeds/setup-flow.embed';
 import { runCommand } from '@presentation/commands/command-runner';
 import { InvalidCommandUsageError } from '@presentation/commands/command-errors';
 
@@ -36,7 +40,9 @@ export const startCommand = {
         const existingSettings = await getGuildSettingsUC.execute(guildId);
 
         if (existingSettings) {
-          throw new InvalidCommandUsageError('❌ This server is already configured. Use `/server-settings` to modify settings.');
+          throw new InvalidCommandUsageError(
+            '❌ This server is already configured. Use `/server-settings` to modify settings.',
+          );
         }
 
         const sessionService = SetupSessionService.getInstance();
@@ -48,7 +54,7 @@ export const startCommand = {
 
           const reply = await interaction.editReply({
             embeds: [embed],
-            components: components
+            components: components,
           });
 
           sessionService.setLastMessageInfo(guildId, userId, reply.id, interaction.channelId!);
@@ -60,7 +66,7 @@ export const startCommand = {
 
           const reply = await interaction.editReply({
             embeds: [embed],
-            components: components
+            components: components,
           });
 
           sessionService.setLastMessageInfo(guildId, userId, reply.id, interaction.channelId!);

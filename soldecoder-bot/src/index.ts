@@ -3,7 +3,6 @@ import { logger } from '@helpers/logger';
 import { registerMessageDispatcherListener } from '@presentation/listeners/message-create/message-dispatcher.listener';
 import { setupErrorHandler } from '@helpers/error-handler';
 import { config } from '@infrastructure/config/env';
-import { CacheService } from '@infrastructure/services/cache.service';
 import { followedChannelsCommand } from '@presentation/commands/channels.command';
 import { serverSettingsCommand } from '@presentation/commands/server-settings.command';
 import { nftPriceCommand } from '@presentation/commands/nft-price.command';
@@ -15,6 +14,7 @@ import { donateCommand } from '@presentation/commands/donate.command';
 import { InteractionRouter } from '@presentation/listeners/interactions/interaction-router';
 import { PositionDisplayScheduler } from '@infrastructure/services/position-display-scheduler.service';
 import { CommandManagerService } from '@infrastructure/services/command-manager.service';
+// import { CacheEndToEndTestService } from '@infrastructure/services/cache-end-to-end-test.service';
 
 const DISCORD_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent];
 
@@ -82,9 +82,6 @@ function setupShutdownHooks(client: Client) {
 async function main() {
   logger.info('Initializing bot');
   setupErrorHandler();
-
-  const cacheService = CacheService.getInstance();
-  await cacheService.initialize();
 
   const commandManager = setupCommands();
 

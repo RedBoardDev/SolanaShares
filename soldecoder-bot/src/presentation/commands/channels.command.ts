@@ -1,9 +1,4 @@
-import {
-  SlashCommandBuilder,
-  type ChatInputCommandInteraction,
-  PermissionFlagsBits,
-  ChannelType,
-} from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction, PermissionFlagsBits, ChannelType } from 'discord.js';
 import { DynamoChannelConfigRepository } from '@infrastructure/repositories/dynamo-channel-config.repository';
 import { GetGuildChannelsUseCase } from '@application/use-cases/get-guild-channels.use-case';
 import { buildChannelListEmbed, buildChannelListComponents } from '@presentation/ui/embeds/channel-list.embed';
@@ -31,9 +26,9 @@ export const followedChannelsCommand = {
         const getChannelsUC = new GetGuildChannelsUseCase(channelRepo);
         const channels = await getChannelsUC.execute(guildId);
 
-        const guildChannels = interaction.guild!.channels.cache
-          .filter(ch => ch.type === ChannelType.GuildText)
-          .map(ch => ({ id: ch.id, name: ch.name }));
+        const guildChannels = interaction
+          .guild!.channels.cache.filter((ch) => ch.type === ChannelType.GuildText)
+          .map((ch) => ({ id: ch.id, name: ch.name }));
 
         const embed = buildChannelListEmbed(channels);
         const components = buildChannelListComponents(channels, guildChannels);
